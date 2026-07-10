@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BRIDGE // DISPLAY CONTROL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#050807; --panel:#0B100D; --amber:#E8A33D; --amber-dim:#7A5A22;
+    --cyan:#5FD3C4; --red:#D6493A; --paper:#E4E2D8; --paper-dim:#8A8A7E; --line:#233028;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; background:var(--void); color:var(--paper); font-family:'Space Mono',monospace; min-height:100vh;}
+  .label{ font-family:'Barlow Condensed',sans-serif; text-transform:uppercase; letter-spacing:0.12em; font-weight:600; }
+  header{
+    padding:20px 28px 14px; border-bottom:1px solid var(--line);
+    display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  }
+  header h1{ margin:0; font-size:22px; letter-spacing:0.15em; color:var(--amber); font-family:'Barlow Condensed',sans-serif; text-transform:uppercase; font-weight:700;}
+  header .sub{ color:var(--paper-dim); font-size:12px; letter-spacing:0.08em; }
+  main{ padding:22px 28px 60px; max-width:1200px; margin:0 auto; }
+  .grid{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:14px;
+  }
+  .slot{
+    background:var(--panel); border:1px solid var(--line); padding:14px 16px;
+    position:relative; display:flex; flex-direction:column; gap:10px;
+  }
+  .slot::before{ content:''; position:absolute; top:6px; left:6px; width:10px; height:10px; border-top:2px solid var(--amber-dim); border-left:2px solid var(--amber-dim); }
+  .slot .slot-id{ font-size:11px; color:var(--paper-dim); letter-spacing:0.15em; }
+  .slot select{
+    background:var(--void); color:var(--paper); border:1px solid var(--line); font-family:'Space Mono',monospace;
+    font-size:12px; padding:7px 8px; width:100%;
+  }
+  .slot select:disabled{ color:var(--paper-dim); }
+  .slot-actions{ display:flex; gap:8px; }
+  button.op{
+    flex:1; font-family:'Barlow Condensed',sans-serif; text-transform:uppercase; letter-spacing:0.1em; font-weight:700;
+    font-size:12px; background:transparent; border:1px solid var(--amber-dim); color:var(--amber); padding:8px 6px; cursor:pointer;
+  }
+  button.op:hover{ background:var(--amber); color:var(--void); }
+  button.op:disabled{ opacity:0.35; cursor:default; }
+  button.op.close{ border-color:#4a2a24; color:var(--red); }
+  button.op.close:hover{ background:var(--red); color:var(--void); }
+  .status-line{ font-size:10px; color:var(--paper-dim); letter-spacing:0.05em; display:flex; justify-content:space-between; }
+  .status-line .dot{ width:6px; height:6px; border-radius:50%; background:var(--paper-dim); display:inline-block; margin-right:5px; }
+  .status-line .dot.open{ background:var(--cyan); box-shadow:0 0 5px var(--cyan); }
+  .toolbar{ display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap; }
+  .toolbar button{
+    font-family:'Barlow Condensed',sans-serif; text-transform:uppercase; letter-spacing:0.1em; font-weight:700; font-size:12px;
+    background:transparent; border:1px solid var(--line); color:var(--paper-dim); padding:9px 14px; cursor:pointer;
+  }
+  .toolbar button:hover{ border-color:var(--amber-dim); color:var(--amber); }
+  footer{ padding:16px 28px 30px; color:var(--paper-dim); font-size:11px; letter-spacing:0.05em; max-width:1200px; margin:0 auto; line-height:1.7; border-top:1px solid var(--line); }
+  footer b{ color:var(--paper); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bridge // Display Control</h1>
+  <span class="sub">10 independently addressable panes · assign a data screen to each and deploy as its own window</span>
+</header>
+
+<main>
+  <div class="toolbar">
+    <button id="open-all" class="label">Open All Assigned</button>
+    <button id="close-all" class="label">Close All</button>
+    <button id="tile-hint" class="label">Tiling Tip</button>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer>
+  Each slot opens its screen as a separate OS-level browser window (not a tab), so you can drag/resize/tile up to
+  10 of them across one or more monitors to build a full bridge console. <b>Screens marked "pending" are not built yet</b>
+  — more will come online here as they're completed. For live microphone input and full audio features, serve this
+  folder over a local web server (e.g. <b>python3 -m http.server</b> from this directory, then open
+  <b>http://localhost:8000/launcher.html</b>) rather than double-clicking the file directly — browsers restrict
+  microphone access on the <b>file://</b> origin. Opened directly from disk, every screen still runs in full using its
+  procedurally generated synthetic signal bed.
+</footer>
+
+<script>
+(function(){
+  'use strict';
+
+  // Registry of available ship data screens. Add entries here as new
+  // screens are built — the grid and dropdowns pick them up automatically.
+  const SCREENS = [
+    { id:'comms-array', title:'Comms Array', subtitle:'Signal intelligence', file:'screens/screen-01-comms-array.html', status:'online' },
+    { id:'nav-core',     title:'Nav Core',     subtitle:'Stellar cartography', status:'pending' },
+    { id:'reactor',      title:'Reactor',      subtitle:'Engineering telemetry', status:'pending' },
+    { id:'threat-matrix',title:'Threat Matrix',subtitle:'Tactical / targeting', status:'pending' },
+    { id:'anomaly',      title:'Anomaly',      subtitle:'Xenoscience scan', status:'pending' },
+    { id:'life-support', title:'Life Support', subtitle:'Atmospherics', status:'pending' },
+    { id:'cryo-bay',     title:'Cryo Bay',     subtitle:'Medical / stasis', status:'pending' },
+    { id:'subspace',     title:'Subspace',     subtitle:'FTL field harmonics', status:'pending' },
+    { id:'ai-core',      title:'AI Core',      subtitle:'Neural substrate', status:'pending' },
+    { id:'external-hull',title:'Hull Cameras', subtitle:'External optical array', status:'pending' }
+  ];
+
+  const NUM_SLOTS = 10;
+  const grid = document.getElementById('grid');
+  const windows = {}; // slotIndex -> window handle
+  const selects = {};
+
+  function buildSlot(i){
+    const slot = document.createElement('div');
+    slot.className = 'slot';
+
+    const idEl = document.createElement('div');
+    idEl.className = 'slot-id label';
+    idEl.textContent = 'SLOT ' + String(i+1).padStart(2,'0');
+    slot.appendChild(idEl);
+
+    const select = document.createElement('select');
+    SCREENS.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = s.title + (s.status === 'pending' ? '  — pending' : '');
+      if (s.status === 'pending') opt.disabled = true;
+      select.appendChild(opt);
+    });
+    // default-assign a distinct screen per slot where possible
+    const defaultScreen = SCREENS[i % SCREENS.length];
+    if (defaultScreen.status === 'online') select.value = defaultScreen.id;
+    else {
+      const firstOnline = SCREENS.find(s => s.status === 'online');
+      if (firstOnline) select.value = firstOnline.id;
+    }
+    selects[i] = select;
+    slot.appendChild(select);
+
+    const statusLine = document.createElement('div');
+    statusLine.className = 'status-line';
+    statusLine.innerHTML = '<span><span class="dot" id="dot-'+i+'"></span>closed</span><span id="stat-'+i+'"></span>';
+    slot.appendChild(statusLine);
+
+    const actions = document.createElement('div');
+    actions.className = 'slot-actions';
+
+    const openBtn = document.createElement('button');
+    openBtn.className = 'op label';
+    openBtn.textContent = 'Open';
+    openBtn.addEventListener('click', () => openSlot(i));
+    actions.appendChild(openBtn);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'op close label';
+    closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', () => closeSlot(i));
+    actions.appendChild(closeBtn);
+
+    slot.appendChild(actions);
+    grid.appendChild(slot);
+  }
+
+  function screenById(id){ return SCREENS.find(s => s.id === id); }
+
+  function openSlot(i){
+    const screen = screenById(selects[i].value);
+    if (!screen || screen.status !== 'online') return;
+
+    const existing = windows[i];
+    if (existing && !existing.closed){
+      existing.focus();
+      return;
+    }
+    // stagger window placement so multiple opens don't stack exactly on top of each other
+    const w = 720, h = 520;
+    const left = 40 + (i % 5) * 60;
+    const top = 40 + Math.floor(i/5) * 60;
+    const win = window.open(screen.file, 'ship_slot_' + i,
+      `width=${w},height=${h},left=${left},top=${top},resizable=yes`);
+    windows[i] = win;
+    updateSlotStatus(i);
+  }
+
+  function closeSlot(i){
+    const win = windows[i];
+    if (win && !win.closed) win.close();
+    windows[i] = null;
+    updateSlotStatus(i);
+  }
+
+  function updateSlotStatus(i){
+    const dot = document.getElementById('dot-'+i);
+    const stat = document.getElementById('stat-'+i);
+    const win = windows[i];
+    const isOpen = win && !win.closed;
+    dot.classList.toggle('open', !!isOpen);
+    dot.parentElement.lastChild.textContent = isOpen ? 'live' : 'closed';
+    stat.textContent = '';
+  }
+
+  setInterval(() => {
+    for (let i = 0; i < NUM_SLOTS; i++) updateSlotStatus(i);
+  }, 1000);
+
+  for (let i = 0; i < NUM_SLOTS; i++) buildSlot(i);
+
+  document.getElementById('open-all').addEventListener('click', () => {
+    for (let i = 0; i < NUM_SLOTS; i++){
+      const screen = screenById(selects[i].value);
+      if (screen && screen.status === 'online') openSlot(i);
+    }
+  });
+  document.getElementById('close-all').addEventListener('click', () => {
+    for (let i = 0; i < NUM_SLOTS; i++) closeSlot(i);
+  });
+  document.getElementById('tile-hint').addEventListener('click', () => {
+    alert('Most OS window managers can auto-tile: try Windows Key + Arrow (Windows), or drag windows to screen edges (macOS/Linux) after opening several slots.');
+  });
+
+})();
+</script>
+</body>
+</html>
