@@ -1,5 +1,17 @@
 # Ship Data Screen Simulator
 
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=fff)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=fff)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6-F7DF1E?logo=javascript&logoColor=000)
+![Three.js](https://img.shields.io/badge/Three.js-r128-000?logo=threedotjs&logoColor=fff)
+![Web Audio API](https://img.shields.io/badge/Web%20Audio%20API-spatial%20%2B%20FFT-8B5CF6)
+
+![Build](https://img.shields.io/badge/build-none%20(open%20the%20file)-success)
+![Dependencies](https://img.shields.io/badge/npm%20dependencies-0-brightgreen)
+![Runtime](https://img.shields.io/badge/runs%20on-file%3A%2F%2F%20or%20localhost-blue)
+![Screens](https://img.shields.io/badge/screens-1%20%2F%2010%20online-orange)
+![Status](https://img.shields.io/badge/status-WIP-yellow)
+
 > Handing this to Claude Code? Start with **CLAUDE.md** (conventions, hard
 > constraints, shared audio API reference) and **ROADMAP.md** (full design
 > brief for each of the 9 remaining screens). This file covers setup and
@@ -10,6 +22,32 @@ A growing set of sci-fi ship data screens — each a self-contained HTML file wi
 both **3D spatial** and **standard stereo** audio sonification. `launcher.html`
 is the control deck: assign any built screen to any of 10 slots and pop each
 one out as its own OS-level window so you can tile them across your desktop.
+
+## Tech stack
+
+Everything runs in the browser with **no build step, no bundler, and zero npm
+dependencies** — the entire toolchain is "open an HTML file." That constraint is
+deliberate (see CLAUDE.md); the choices below all follow from it.
+
+| Layer | Technology | Notes |
+|-------|-----------|-------|
+| **Markup / styling** | HTML5, CSS3 | One self-contained `.html` per screen; all CSS inline. CSS Grid for layout, custom properties for each screen's palette tokens. |
+| **Language** | Vanilla JavaScript (ES6+) | No framework, no TypeScript, no transpile. Screen logic is inline; only the audio engine is shared. |
+| **3D rendering** | [Three.js](https://threejs.org/) **r128** | Loaded as a global `THREE` from cdnjs (UMD build). Pinned to r128 — the last version with a simple non-module build that works over `file://`. Note: no `THREE.CapsuleGeometry` at this version. |
+| **Audio** | [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) | FFT analysis (`AnalyserNode`), 3D spatial audio via HRTF `PannerNode`, stereo pings via `StereoPannerNode`, procedural synth fallback via `OscillatorNode` + filtered `AudioBufferSourceNode` noise. |
+| **Audio input** | `getUserMedia` (live mic) | Falls back automatically to a procedural "deep space signal" synth bed when no mic / permission denied / `file://` origin. |
+| **2D drawing** | Canvas 2D | Spectrograph waterfall and oscilloscope are plain `<canvas>` + `CanvasRenderingContext2D`. |
+| **Typography** | Google Fonts (CDN) | Per-screen display + mono pairings, assigned in ROADMAP.md so no two screens collide. |
+| **Windowing** | `window.open()` | The launcher spawns each screen as a separate OS-level browser window for desktop tiling. |
+| **Local dev** | Python `http.server` | Any static file server works; needed only for live-mic testing (secure-context requirement). |
+
+**Shared code:** exactly one module, [`shared/audio-engine.js`](shared/audio-engine.js)
+(`window.ShipAudioEngine`) — a plain, non-module script providing source
+acquisition, FFT/time-domain data, spatial voices, and standard pings. Screens
+are otherwise fully independent.
+
+**No dependencies to install.** The only external loads at runtime are the
+Three.js CDN script and the Google Fonts stylesheets.
 
 ## Quick start
 
