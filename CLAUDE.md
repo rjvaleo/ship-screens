@@ -17,8 +17,9 @@ Design/engineering decisions already made for screen 1: see **README.md**.
 ## Hard constraints — do not violate these
 
 1. **Every screen is a single self-contained `.html` file** under `screens/`,
-   with all CSS and screen-specific JS inline. Only two things are ever
-   shared: `shared/audio-engine.js` and the Google Fonts CDN calls. Do not
+   with all CSS and screen-specific JS inline. Only three things are ever
+   shared: `shared/audio-engine.js`, `shared/embed.js` (the console hook —
+   see "Bridge Console" below), and the Google Fonts CDN calls. Do not
    factor screens into multiple files or add a build step (no bundler, no
    npm install) — the whole point is these run by opening an HTML file.
 2. **`shared/audio-engine.js` stays a plain (non-module) script.** It's
@@ -69,7 +70,35 @@ Follow the same two-pass approach used for screen 1 (Comms Array):
    `file: 'screens/screen-NN-slug.html'`. That's the only launcher change
    needed — the grid, dropdowns, and window-spawning all pick it up
    automatically.
-5. Update the status table in `README.md`.
+5. Register it in `app.html` too: add a `MODULES` entry
+   (`{ id, title, sub, file, accent }`) so it appears in the Bridge Console.
+6. **Include the console hook** and the shared ids it depends on (see below).
+7. Update the status table in `README.md`.
+
+## Bridge Console (`app.html`) + the embed hook
+
+`app.html` is the default entry: it loads all 10 screens as `<iframe>`s
+(each with `?embed=1`) into one window, in Solo/Duo/Trio layouts. A new
+screen works there for free **as long as it follows these conventions**:
+
+- Load the hook right after the audio engine:
+  `<script src="../shared/embed.js"></script>` (after
+  `audio-engine.js`, before the screen's inline script).
+- Use the shared ids the hook drives: the boot overlay is `#boot-overlay`
+  and its start button is `#boot-btn` (the hook boots a screen by clicking
+  `#boot-btn`, so the button's own click handler must be what calls
+  `engine.start()` + starts the render loop — as every screen already does).
+- Put post-boot toggles in a container the hook can hide: either
+  `.float-controls` or `#controls` (both are hidden when embedded).
+- Drive the render loop through the **global** `requestAnimationFrame`
+  (i.e. call `requestAnimationFrame(loop)`, don't cache a local reference) —
+  the hook wraps it to throttle rail previews to a low frame rate.
+
+The hook exposes `window.__shipBoot()` and `window.__shipConfig({fps,volume})`
+on each embedded screen; the shell calls them directly (same-origin, so a
+single user gesture in `app.html` boots every pane). Volume works because
+`audio-engine.js` publishes the live instance as `window.__shipEngine`.
+`?embed=1` changes nothing when a screen is opened standalone.
 
 ## Shared audio engine API (`shared/audio-engine.js`, `window.ShipAudioEngine`)
 

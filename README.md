@@ -121,6 +121,31 @@ default.
 | [`server.py`](server.py) | The server itself (stdlib `http.server`). Run directly or via the wrapper. |
 | [`serve.sh`](serve.sh) | One-line launcher: `cd`s to the project and runs `python3 server.py [port]`. |
 
+## Using the Bridge Console (`app.html`)
+
+The single-window data wall. All 10 screens load as embedded panes; you never
+open separate windows.
+
+- **Layouts** (top bar): **Solo** (1 hero + rails), **Duo** (2 features + rails),
+  **Trio** (hero + 2 stacked + rails). Switching layouts keeps your current
+  featured order.
+- **Engage Console** — one click boots audio in every pane at once (browsers
+  require a user gesture to start audio; the console needs only one for all 10).
+- **Center vs. rails** — featured (center) panes render at full frame rate and
+  louder; rail panes render at a low frame rate and quieter, to stay within the
+  browser's WebGL-context and CPU budget.
+- **Per-pane volume** — every pane's title bar has a volume slider.
+- **Promote** — click a rail pane's **⤢** to swap it into the primary center
+  slot (the previous hero drops back to the rail). No reload — panes never
+  re-boot when you rearrange them.
+- Your layout, order, and volumes persist in `localStorage`.
+
+How it works: each screen is loaded in an `<iframe>` with `?embed=1`, which
+activates [`shared/embed.js`](shared/embed.js) — it hides the screen's own boot
+overlay/controls and lets the console drive boot, frame rate, and volume. The
+panes are positioned by CSS and never reparented, so rearranging the wall never
+reloads (or re-boots) a screen.
+
 ## Using the launcher
 
 - Each of the 10 slots has a dropdown of available screens and an **Open** /
@@ -148,21 +173,25 @@ default.
 | 9 | AI Core | Neural substrate: node-graph cascades, radial spectrograph, position-hashed thought blips | ✅ built |
 | 10 | Hull Cameras | External optical: one debris scene in a 2×2 viewport grid, proximity alerts | ✅ built |
 
-Screens 2–10 will be added one at a time — `launcher.html` will pick each one
-up automatically as its entry in `SCREENS` is flipped from `pending` to
-`online` (no other changes needed).
+All 10 screens are built. To add an 11th, drop it in `screens/`, register it in
+both `launcher.html` (`SCREENS`) and `app.html` (`MODULES`), and include
+`shared/embed.js` so it works in the console (see CLAUDE.md).
 
 ## Architecture
 
 ```
 ship-screens/
-  launcher.html            control deck — assigns & spawns windows
+  index.html               redirect → app.html
+  app.html                 Bridge Console — single-window data wall (default)
+  launcher.html            multi-window control deck — assigns & spawns windows
+  server.py / serve.sh     zero-dependency Python app server (+ presets API)
   shared/
     audio-engine.js        shared Web Audio backbone (mic + synth fallback,
                             FFT analysis, HRTF spatial voices, standard pings)
+    embed.js               console hook — boot/fps/volume control when ?embed=1
   screens/
     screen-01-comms-array.html
-    ...
+    ... through screen-10-hull-cameras.html
 ```
 
 `shared/audio-engine.js` is loaded as a plain script (not an ES module) so
