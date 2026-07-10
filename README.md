@@ -17,11 +17,20 @@
 > brief for each of the 9 remaining screens). This file covers setup and
 > what's already built.
 
-A growing set of sci-fi ship data screens — each a self-contained HTML file with
+A set of 10 sci-fi ship data screens — each a self-contained HTML file with
 3D animation (Three.js), a live spectrograph/waterfall, an oscilloscope, and
-both **3D spatial** and **standard stereo** audio sonification. `launcher.html`
-is the control deck: assign any built screen to any of 10 slots and pop each
-one out as its own OS-level window so you can tile them across your desktop.
+both **3D spatial** and **standard stereo** audio sonification.
+
+Two ways to run them:
+
+- **`app.html` — the Bridge Console** (default): all 10 screens on one wall in
+  a single window. Pick a layout (Solo / Duo / Trio), and the featured modules
+  run full-rate and full-volume in the center while the rest run as
+  low-frame-rate, lower-volume previews on the side rails. Each pane has its own
+  volume slider; click a rail pane's ⤢ to promote it to center. One "Engage
+  Console" gesture boots audio in every pane at once.
+- **`launcher.html` — the multi-window deck**: assign any screen to any of 10
+  slots and pop each out as its own OS-level window to tile across a desktop.
 
 ## Tech stack
 
@@ -58,7 +67,9 @@ cd ship-screens
 ./serve.sh            # or: python3 server.py
 ```
 
-Then open **http://localhost:8000/launcher.html** in Chrome or Edge.
+Then open **http://localhost:8000/** in Chrome or Edge — it lands on the
+**Bridge Console** (`app.html`). For the multi-window deck instead, open
+**http://localhost:8000/launcher.html**.
 
 **Direct / no server:** you can also just double-click `launcher.html`.
 Everything works except live microphone input and saved layouts — browsers
