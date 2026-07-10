@@ -53,6 +53,13 @@
     background:transparent; border:1px solid var(--line); color:var(--paper-dim); padding:9px 14px; cursor:pointer;
   }
   .toolbar button:hover{ border-color:var(--amber-dim); color:var(--amber); }
+  .toolbar input, .toolbar select#preset-list{
+    background:var(--void); color:var(--paper); border:1px solid var(--line);
+    font-family:'Space Mono',monospace; font-size:12px; padding:8px 10px;
+  }
+  .toolbar input{ width:150px; }
+  .toolbar .spacer{ flex:1; }
+  .toolbar .layouts-tag{ align-self:center; color:var(--paper-dim); font-size:10px; letter-spacing:0.12em; }
   footer{ padding:16px 28px 30px; color:var(--paper-dim); font-size:11px; letter-spacing:0.05em; max-width:1200px; margin:0 auto; line-height:1.7; border-top:1px solid var(--line); }
   footer b{ color:var(--paper); }
 </style>
@@ -68,6 +75,14 @@
     <button id="open-all" class="label">Open All Assigned</button>
     <button id="close-all" class="label">Close All</button>
     <button id="tile-hint" class="label">Tiling Tip</button>
+  </div>
+  <div class="toolbar" id="layouts-bar" style="display:none;">
+    <span class="layouts-tag">SAVED LAYOUTS</span>
+    <input id="preset-name" placeholder="layout name" maxlength="40" />
+    <button id="save-layout" class="label">Save Current</button>
+    <span class="spacer"></span>
+    <select id="preset-list"><option value="">— load a layout —</option></select>
+    <button id="load-layout" class="label">Load</button>
   </div>
   <div class="grid" id="grid"></div>
 </main>
@@ -213,6 +228,72 @@
   document.getElementById('tile-hint').addEventListener('click', () => {
     alert('Most OS window managers can auto-tile: try Windows Key + Arrow (Windows), or drag windows to screen edges (macOS/Linux) after opening several slots.');
   });
+
+  // ---------- Saved layouts (server-only feature) ----------
+  // Uses the /api/presets endpoint from server.py. When opened via file://
+  // or without the server, the fetch fails and the layouts bar stays hidden,
+  // leaving the rest of the launcher fully functional.
+  const layoutsBar = document.getElementById('layouts-bar');
+  const presetList = document.getElementById('preset-list');
+  const presetName = document.getElementById('preset-name');
+
+  function renderPresets(presets){
+    presetList.innerHTML = '<option value="">— load a layout —</option>';
+    Object.keys(presets).sort().forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      presetList.appendChild(opt);
+    });
+  }
+
+  async function initLayouts(){
+    let store;
+    try {
+      const res = await fetch('api/presets');
+      if (!res.ok) return;            // API present but errored — stay hidden
+      store = await res.json();
+    } catch (e) {
+      return;                          // file:// or no server — stay hidden
+    }
+    layoutsBar.style.display = '';
+    renderPresets(store.presets || {});
+
+    document.getElementById('save-layout').addEventListener('click', async () => {
+      const name = presetName.value.trim();
+      if (!name){ presetName.focus(); return; }
+      const slots = [];
+      for (let i = 0; i < NUM_SLOTS; i++) slots.push(selects[i].value);
+      try {
+        const res = await fetch('api/presets', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ name, slots })
+        });
+        if (!res.ok) throw new Error('save failed');
+        const data = await res.json();
+        renderPresets(data.presets || {});
+        presetList.value = name;
+        presetName.value = '';
+      } catch (e){ alert('Could not save layout: ' + e.message); }
+    });
+
+    document.getElementById('load-layout').addEventListener('click', async () => {
+      const name = presetList.value;
+      if (!name) return;
+      try {
+        const res = await fetch('api/presets');
+        const data = await res.json();
+        const preset = (data.presets || {})[name];
+        if (!preset) return;
+        preset.slots.forEach((id, i) => {
+          if (i >= NUM_SLOTS) return;
+          const scr = screenById(id);
+          if (scr && scr.status === 'online') selects[i].value = id;
+        });
+      } catch (e){ alert('Could not load layout: ' + e.message); }
+    });
+  }
+
+  initLayouts();
 
 })();
 </script>

@@ -5,3 +5,7 @@
 .vscode/
 .idea/
 *.swp
+
+# Server runtime data (saved launcher layouts)
+data/
+__pycache__/

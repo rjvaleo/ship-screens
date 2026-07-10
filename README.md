@@ -51,21 +51,64 @@ Three.js CDN script and the Google Fonts stylesheets.
 
 ## Quick start
 
-**Recommended (full features, including live microphone):**
+**Recommended — the bundled app server (full features + saved layouts):**
 
 ```
 cd ship-screens
-python3 -m http.server 8000
+./serve.sh            # or: python3 server.py
 ```
 
 Then open **http://localhost:8000/launcher.html** in Chrome or Edge.
 
 **Direct / no server:** you can also just double-click `launcher.html`.
-Everything works except live microphone input — browsers block `getUserMedia`
-on the `file://` origin for security reasons. Every screen falls back
-automatically to a procedurally generated "deep space signal" synth bed, so
-the 3D animation, spectrograph, and sonification are all still fully live —
-it's just not reacting to real-world sound.
+Everything works except live microphone input and saved layouts — browsers
+block `getUserMedia` on the `file://` origin for security reasons, and the
+layout API needs the server. Every screen falls back automatically to a
+procedurally generated "deep space signal" synth bed, so the 3D animation,
+spectrograph, and sonification are all still fully live — it's just not
+reacting to real-world sound.
+
+## Server
+
+[`server.py`](server.py) is a **zero-dependency Python 3 standard-library**
+server (no `pip install`, matching the project's no-build ethos). It serves
+the static screens *and* adds a small JSON API the files can't provide alone.
+
+**Launch:**
+
+```
+./serve.sh            # convenience wrapper — default port 8000
+./serve.sh 9000       # custom port
+python3 server.py     # equivalent, direct
+PORT=9000 python3 server.py
+```
+
+Stop with `Ctrl+C`. It serves on `http://localhost:8000/launcher.html` by
+default.
+
+**Why bother, when screens open straight from disk?**
+
+- **Live microphone** requires a "secure context" — `http://localhost` counts,
+  `file://` does not. Serving unlocks real mic-reactive audio.
+- **Saved launcher layouts** — assign screens to slots, name the arrangement,
+  and reload it later. Stored server-side in `data/presets.json` (gitignored).
+  The launcher's "Saved Layouts" bar only appears when the API is reachable;
+  under `file://` it stays hidden and everything else works unchanged.
+
+**API endpoints:**
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET`  | `/api/health`  | `{ status, screens, presets }` liveness check |
+| `GET`  | `/api/presets` | all saved launcher layouts |
+| `POST` | `/api/presets` | save a layout — body `{ "name": str, "slots": [...] }` |
+
+**Scripts:**
+
+| File | What it is |
+|------|-----------|
+| [`server.py`](server.py) | The server itself (stdlib `http.server`). Run directly or via the wrapper. |
+| [`serve.sh`](serve.sh) | One-line launcher: `cd`s to the project and runs `python3 server.py [port]`. |
 
 ## Using the launcher
 
