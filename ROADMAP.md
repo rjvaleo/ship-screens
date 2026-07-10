@@ -206,12 +206,14 @@ underlying FFT data, calmer presentation, matching the mood.
 
 ## 7. Cryo Bay — *Medical / cryo-stasis monitoring*
 
-**Palette** — **intentionally light-mode**, the one reversal in the set:
-- `--void-white: #F0F3F2`
-- `--clinical-blue: #2C6E8E`
-- `--vitals-red: #D6455B`
-- `--frost: #B8D8DD`
-- `--ink: #10201F`
+**Palette** — dark clinical slate (was originally light-mode; re-themed dark
+so it doesn't glare as a white tile in the unified Bridge Console):
+- `--paper: #0A141A` (cold cryo slate)
+- `--card: #0F1E26`
+- `--clinical-blue: #4FA3C7`
+- `--vitals-red: #F2586E`
+- `--frost: #9FD2DD`
+- `--ink: #DCE9ED`
 
 **Type**: display — *IBM Plex Sans* Medium (clean, clinical); data — *IBM Plex Mono*
 
@@ -219,13 +221,12 @@ underlying FFT data, calmer presentation, matching the mood.
 each with its own mini scrolling vitals waveform; a central 3D wireframe
 cryo-pod shows whichever pod is currently selected.
 
-**Signature**: the light background is the risk worth taking here — justify
-it by leaning fully into "clean room" rather than treating it as an
-oversight (crisp thin borders, no glow effects, flat clinical shadows only).
-Paired with it: vitals waveforms are sonified from **simulated derived
-data** (a pod's internal stability variance) rather than raw microphone/synth
-audio directly — showing a different sonification *source*, not just a
-different mapping.
+**Signature**: vitals waveforms are sonified from **simulated derived data**
+(a pod's internal stability variance) rather than raw microphone/synth audio
+directly — showing a different sonification *source*, not just a different
+mapping. (The original brief made the light background the signature risk;
+that was reverted to a dark clinical palette for console cohesion, so the
+sonification-source idea now carries the screen's distinctiveness.)
 
 **3D**: a wireframe capsule pod — build from `CylinderGeometry` (body) +
 `SphereGeometry` caps (r128 has no `CapsuleGeometry`, see CLAUDE.md), with a

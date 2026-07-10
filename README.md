@@ -168,7 +168,7 @@ reloads (or re-boots) a screen.
 | 4 | Threat Matrix | Tactical targeting: rotating 3D sweep, deterministic ping on sweep-crossing, hostile drones | ✅ built |
 | 5 | Anomaly | Xenoscience: transient-detection RGB-split glitch, ephemeral spatial contacts, jittering chrome | ✅ built |
 | 6 | Life Support | Atmospherics: breathing deck ring on a respiration rhythm, position-encoded zone alarms | ✅ built |
-| 7 | Cryo Bay | Medical stasis (light-mode): pod tiles sonified from simulated vitals, positional heartbeat beeps | ✅ built |
+| 7 | Cryo Bay | Medical stasis: pod tiles sonified from simulated vitals, positional heartbeat beeps | ✅ built |
 | 8 | Subspace | Warp harmonics: standing-wave field-line tunnel, harmonic-series tones, Lissajous XY scope | ✅ built |
 | 9 | AI Core | Neural substrate: node-graph cascades, radial spectrograph, position-hashed thought blips | ✅ built |
 | 10 | Hull Cameras | External optical: one debris scene in a 2×2 viewport grid, proximity alerts | ✅ built |

@@ -8,14 +8,15 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#F0F3F2;
-    --card:#FFFFFF;
-    --clinical:#2C6E8E;
-    --vitals:#D6455B;
-    --frost:#B8D8DD;
-    --ink:#10201F;
-    --line:#D3DEDD;
-    --dim:#6C8386;
+    /* dark clinical — cold "cryo" slate rather than the old clean-room white */
+    --paper:#0A141A;
+    --card:#0F1E26;
+    --clinical:#4FA3C7;
+    --vitals:#F2586E;
+    --frost:#9FD2DD;
+    --ink:#DCE9ED;
+    --line:#1E323C;
+    --dim:#7A94A0;
   }
   *{box-sizing:border-box;}
   html,body{ margin:0; width:100%; height:100%; background:var(--paper); color:var(--ink);
@@ -37,13 +38,13 @@
   .pod .name{ font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:12px; color:var(--ink); }
   .pod .state{ font-size:9px; letter-spacing:0.1em; color:var(--clinical); }
   .pod .state.warn{ color:var(--vitals); }
-  .pod .ecg{ width:100%; height:40px; display:block; margin:6px 0 4px; background:#FAFCFC; border:1px solid var(--line); }
+  .pod .ecg{ width:100%; height:40px; display:block; margin:6px 0 4px; background:#08131A; border:1px solid var(--line); }
   .pod .vitals{ display:flex; justify-content:space-between; font-size:10px; color:var(--dim); }
   .pod .vitals b{ color:var(--vitals); font-weight:500; }
   .pod .vitals .bpm{ color:var(--clinical); }
   .pod .spec{ width:100%; height:12px; display:block; margin-top:5px; }
 
-  #stage{ grid-column:2; grid-row:2; position:relative; background:linear-gradient(180deg,#F6F9F8,#EAF0EF); }
+  #stage{ grid-column:2; grid-row:2; position:relative; background:linear-gradient(180deg,#0C1A22,#07121A); }
   #stage canvas{ display:block; width:100%; height:100%; }
   #stage .cap{ position:absolute; top:16px; left:20px; font-size:11px; color:var(--dim); letter-spacing:0.14em; }
   #stage .cap b{ color:var(--clinical); }
@@ -154,12 +155,12 @@
   const l1=new THREE.DirectionalLight(0x2C6E8E,0.6); l1.position.set(3,4,5); scene.add(l1);
 
   const capsule=new THREE.Group(); scene.add(capsule);
-  const bodyMat=new THREE.MeshBasicMaterial({ color:0x2C6E8E, wireframe:true, transparent:true, opacity:0.6 });
+  const bodyMat=new THREE.MeshBasicMaterial({ color:0x4FA3C7, wireframe:true, transparent:true, opacity:0.6 });
   const body=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,3.4,24,1,true), bodyMat); body.rotation.z=Math.PI/2; capsule.add(body);
   const capA=new THREE.Mesh(new THREE.SphereGeometry(1.1,20,12,0,Math.PI*2,0,Math.PI/2), bodyMat.clone()); capA.rotation.z=-Math.PI/2; capA.position.x=1.7; capsule.add(capA);
   const capB=new THREE.Mesh(new THREE.SphereGeometry(1.1,20,12,0,Math.PI*2,0,Math.PI/2), bodyMat.clone()); capB.rotation.z=Math.PI/2; capB.position.x=-1.7; capsule.add(capB);
   // occupant glow
-  const occupant=new THREE.Mesh(new THREE.IcosahedronGeometry(0.7,1), new THREE.MeshBasicMaterial({ color:0xD6455B, transparent:true, opacity:0.28 }));
+  const occupant=new THREE.Mesh(new THREE.IcosahedronGeometry(0.7,1), new THREE.MeshBasicMaterial({ color:0xF2586E, transparent:true, opacity:0.32 }));
   capsule.add(occupant);
   const frostRing=new THREE.Mesh(new THREE.TorusGeometry(1.25,0.02,8,40), new THREE.MeshBasicMaterial({ color:0xB8D8DD, transparent:true, opacity:0.7 }));
   frostRing.rotation.y=Math.PI/2; capsule.add(frostRing);
@@ -180,7 +181,7 @@
   function drawSpec(p, freq){
     const c=p.specCanvas, x=p.specCtx, w=c.width, h=c.height; if(!w||!h) return;
     x.clearRect(0,0,w,h); const n=p.binHi-p.binLo;
-    for(let i=0;i<w;i++){ const idx=p.binLo+Math.floor(i/w*n); const v=freq[idx]/255; x.fillStyle=`rgba(44,110,142,${0.2+v*0.7})`; x.fillRect(i,h-v*h,1,v*h); }
+    for(let i=0;i<w;i++){ const idx=p.binLo+Math.floor(i/w*n); const v=freq[idx]/255; x.fillStyle=`rgba(79,163,199,${0.2+v*0.7})`; x.fillRect(i,h-v*h,1,v*h); }
   }
 
   function ecgSample(phase, stab){
