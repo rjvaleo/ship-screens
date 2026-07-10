@@ -108,6 +108,11 @@
       this._synthNodes = [];
       this._started = false;
       this.onModeChange = null; // optional callback(mode)
+      // Expose the instance so an embedding shell (app.html) can drive
+      // master volume without reaching into each screen's closure. Each
+      // screen constructs exactly one engine, so this is unambiguous.
+      // Harmless in standalone use.
+      if (typeof window !== 'undefined') window.__shipEngine = this;
     }
 
     async start() {

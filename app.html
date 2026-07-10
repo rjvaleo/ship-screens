@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BRIDGE CONSOLE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#07090C; --chrome:#0E1319; --edge:#1B222B; --edge-hi:#2A3746;
+    --ink:#D7E1EA; --dim:#6E7D8C; --accent:#6FC3D6;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; width:100%; height:100%; background:var(--bg); color:var(--ink);
+    font-family:'JetBrains Mono',monospace; overflow:hidden; }
+  .disp{ font-family:'Space Grotesk',sans-serif; }
+
+  /* top bar */
+  #bar{ position:fixed; top:0; left:0; right:0; height:48px; z-index:20; display:flex; align-items:center; gap:18px; padding:0 16px;
+    background:linear-gradient(180deg,#0F151B,#0B1015); border-bottom:1px solid var(--edge); }
+  #bar .brand{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; letter-spacing:0.22em; color:var(--accent); text-transform:uppercase; }
+  #bar .brand small{ display:block; font-weight:500; font-size:9px; letter-spacing:0.18em; color:var(--dim); margin-top:1px; }
+  #bar .presets{ display:flex; gap:6px; }
+  #bar .presets button{ font-family:'Space Grotesk',sans-serif; font-weight:500; font-size:11px; letter-spacing:0.14em; text-transform:uppercase;
+    background:transparent; color:var(--dim); border:1px solid var(--edge); padding:7px 13px; cursor:pointer; }
+  #bar .presets button:hover{ border-color:var(--edge-hi); color:var(--ink); }
+  #bar .presets button.active{ border-color:var(--accent); color:var(--accent); }
+  #bar .spacer{ flex:1; }
+  #bar .link{ font-size:10px; letter-spacing:0.1em; color:var(--dim); text-decoration:none; }
+  #bar .link:hover{ color:var(--accent); }
+
+  /* console */
+  #console{ position:fixed; top:48px; left:0; right:0; bottom:0; }
+  .pane{ position:absolute; border:1px solid var(--edge); background:#04060A; overflow:hidden;
+    transition:left .35s cubic-bezier(.4,.1,.2,1), top .35s cubic-bezier(.4,.1,.2,1),
+               width .35s cubic-bezier(.4,.1,.2,1), height .35s cubic-bezier(.4,.1,.2,1); }
+  .pane.center{ border-color:var(--edge-hi); box-shadow:0 0 0 1px rgba(111,195,214,0.12); }
+  .pane-bar{ position:absolute; top:0; left:0; right:0; height:20px; z-index:3; display:flex; align-items:center; gap:6px; padding:0 7px;
+    background:rgba(9,13,18,0.82); border-bottom:1px solid var(--edge); font-size:9px; letter-spacing:0.08em; }
+  .pane-bar .swatch{ width:7px; height:7px; flex:none; }
+  .pane-bar .nm{ font-family:'Space Grotesk',sans-serif; font-weight:500; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pane-bar .sp{ flex:1; }
+  .pane-bar input[type=range]{ width:52px; height:12px; cursor:pointer; accent-color:var(--accent); }
+  .pane-bar .promote{ cursor:pointer; color:var(--dim); border:1px solid var(--edge); background:transparent; font-size:9px; line-height:1; padding:2px 5px; }
+  .pane-bar .promote:hover{ color:var(--accent); border-color:var(--accent); }
+  .pane.center .pane-bar .promote{ display:none; }
+  .pane iframe{ position:absolute; top:20px; left:0; width:100%; height:calc(100% - 20px); border:0; display:block; background:#04060A; }
+  .pane.rail .pane-bar input[type=range]{ width:38px; }
+  .pane.rail .pane-bar .nm{ font-size:8.5px; }
+
+  /* engage overlay */
+  #engage{ position:fixed; inset:0; z-index:40; background:rgba(5,7,10,0.94); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:18px; }
+  #engage .title{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:24px; letter-spacing:0.24em; color:var(--accent); text-transform:uppercase; }
+  #engage p{ color:var(--dim); font-size:12px; letter-spacing:0.05em; max-width:440px; text-align:center; line-height:1.7; }
+  #engage-btn{ font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; letter-spacing:0.16em; text-transform:uppercase;
+    background:transparent; border:1px solid var(--accent); color:var(--accent); padding:15px 40px; cursor:pointer; }
+  #engage-btn:hover:not(:disabled){ background:var(--accent); color:var(--bg); }
+  #engage-btn:disabled{ opacity:0.4; cursor:default; }
+  #engage .status{ font-size:10px; letter-spacing:0.12em; color:var(--dim); }
+</style>
+</head>
+<body>
+
+<div id="bar">
+  <div class="brand disp">Bridge Console<small>UNIFIED DATA WALL</small></div>
+  <div class="presets" id="presets"></div>
+  <div class="spacer"></div>
+  <a class="link" href="launcher.html">MULTI-WINDOW LAUNCHER →</a>
+</div>
+
+<div id="console"></div>
+
+<div id="engage">
+  <div class="title disp">Bridge Console</div>
+  <p>Ten ship data screens on one wall. Center panes run at full rate and volume; side rails run as low-frame-rate previews at reduced volume. Each pane has its own volume slider — click a rail pane's ⤢ to promote it to center. Starting requires one audio gesture.</p>
+  <button id="engage-btn" disabled>Loading modules…</button>
+  <div class="status" id="engage-status">0 / 10 ready</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // Module registry — mirrors launcher.html, plus an accent per screen.
+  const MODULES = [
+    { id:'comms-array',  title:'Comms Array',  sub:'Signal intelligence', file:'screens/screen-01-comms-array.html',  accent:'#E8A33D' },
+    { id:'nav-core',     title:'Nav Core',     sub:'Stellar cartography', file:'screens/screen-02-nav-core.html',      accent:'#B25CC9' },
+    { id:'reactor',      title:'Reactor',      sub:'Engineering',         file:'screens/screen-03-reactor.html',       accent:'#FF6B1A' },
+    { id:'threat-matrix',title:'Threat Matrix',sub:'Tactical',            file:'screens/screen-04-threat-matrix.html', accent:'#FF3B30' },
+    { id:'anomaly',      title:'Anomaly',      sub:'Xenoscience',         file:'screens/screen-05-anomaly.html',       accent:'#6EFFB2' },
+    { id:'life-support', title:'Life Support', sub:'Atmospherics',        file:'screens/screen-06-life-support.html',  accent:'#7FD858' },
+    { id:'cryo-bay',     title:'Cryo Bay',     sub:'Medical stasis',      file:'screens/screen-07-cryo-bay.html',      accent:'#2C6E8E' },
+    { id:'subspace',     title:'Subspace',     sub:'Warp harmonics',      file:'screens/screen-08-subspace.html',      accent:'#8B5CF6' },
+    { id:'ai-core',      title:'AI Core',      sub:'Neural substrate',    file:'screens/screen-09-ai-core.html',       accent:'#4FF0D6' },
+    { id:'hull-cameras', title:'Hull Cameras', sub:'External optical',    file:'screens/screen-10-hull-cameras.html',  accent:'#39FF6A' }
+  ];
+  const N = MODULES.length;
+
+  // Preset feature counts + default primary ordering per preset.
+  const PRESETS = {
+    solo: { label:'Solo', k:1, order:['nav-core','comms-array','reactor','threat-matrix','anomaly','life-support','cryo-bay','subspace','ai-core','hull-cameras'] },
+    duo:  { label:'Duo',  k:2, order:['subspace','ai-core','nav-core','reactor','threat-matrix','hull-cameras','comms-array','anomaly','life-support','cryo-bay'] },
+    trio: { label:'Trio', k:3, order:['nav-core','reactor','threat-matrix','hull-cameras','ai-core','subspace','comms-array','anomaly','life-support','cryo-bay'] }
+  };
+
+  const CENTER_VOL = 0.85, RAIL_VOL = 0.28;
+  const CENTER_FPS = 60, RAIL_FPS = 12;
+  const RAIL_W = 15, GAP = 0.7; // percent
+
+  const consoleEl = document.getElementById('console');
+  const panes = {}; // id -> { el, iframe, slider, module, loaded }
+  let assignment = PRESETS.solo.order.slice();
+  let preset = 'solo';
+  let booted = false;
+  let loadedCount = 0;
+
+  // Build the persistent panes (created once, never reparented → never reload).
+  MODULES.forEach(m => {
+    const el = document.createElement('div'); el.className = 'pane';
+    const bar = document.createElement('div'); bar.className = 'pane-bar';
+    bar.innerHTML = `<span class="swatch" style="background:${m.accent}"></span>`+
+      `<span class="nm">${m.title}</span><span class="sp"></span>`+
+      `<button class="promote" title="Promote to center">⤢</button>`+
+      `<input type="range" min="0" max="1" step="0.01" value="${CENTER_VOL}">`;
+    const iframe = document.createElement('iframe');
+    iframe.src = m.file + '?embed=1';
+    iframe.setAttribute('scrolling','no');
+    iframe.addEventListener('load', () => { onPaneLoad(m.id); });
+    el.appendChild(bar); el.appendChild(iframe);
+    consoleEl.appendChild(el);
+
+    const slider = bar.querySelector('input');
+    slider.addEventListener('input', () => setVolume(m.id, parseFloat(slider.value)));
+    bar.querySelector('.promote').addEventListener('click', () => promote(m.id));
+
+    panes[m.id] = { el, iframe, slider, module:m, loaded:false, vol:CENTER_VOL };
+  });
+
+  function onPaneLoad(id){
+    const p = panes[id];
+    if(p.loaded) return;
+    p.loaded = true; loadedCount++;
+    document.getElementById('engage-status').textContent = loadedCount + ' / ' + N + ' ready';
+    if(loadedCount === N){
+      const btn = document.getElementById('engage-btn');
+      btn.disabled = false; btn.textContent = 'Engage Console';
+    }
+  }
+
+  // ---- layout geometry ----
+  function computeRects(){
+    const k = PRESETS[preset].k;
+    const featured = assignment.slice(0, k);
+    const rest = assignment.slice(k);
+    const rects = {}; // id -> {x,y,w,h,role}
+
+    // center region
+    const cx0 = RAIL_W + GAP, cx1 = 100 - RAIL_W - GAP, cw = cx1 - cx0;
+    if(k === 1){
+      rects[featured[0]] = { x:cx0, y:0, w:cw, h:100, role:'center' };
+    } else if(k === 2){
+      const w = (cw - GAP)/2;
+      rects[featured[0]] = { x:cx0, y:0, w, h:100, role:'center' };
+      rects[featured[1]] = { x:cx0 + w + GAP, y:0, w, h:100, role:'center' };
+    } else { // trio: hero + 2 stacked
+      const heroW = cw*0.6, sideW = cw - heroW - GAP, sideH = (100 - GAP)/2;
+      rects[featured[0]] = { x:cx0, y:0, w:heroW, h:100, role:'center' };
+      rects[featured[1]] = { x:cx0 + heroW + GAP, y:0, w:sideW, h:sideH, role:'center' };
+      rects[featured[2]] = { x:cx0 + heroW + GAP, y:sideH + GAP, w:sideW, h:sideH, role:'center' };
+    }
+
+    // rails: split remainder left/right
+    const ln = Math.ceil(rest.length/2);
+    const left = rest.slice(0, ln), right = rest.slice(ln);
+    placeRail(left, 'left', rects);
+    placeRail(right, 'right', rects);
+    return rects;
+  }
+  function placeRail(list, side, rects){
+    const n = list.length; if(!n) return;
+    const x = side === 'left' ? 0 : (100 - RAIL_W);
+    const h = (100 - (n-1)*GAP)/n;
+    list.forEach((id, i) => {
+      rects[id] = { x:x + 0.2, y:i*(h + GAP), w:RAIL_W - 0.4, h, role:'rail' };
+    });
+  }
+
+  function layout(){
+    const rects = computeRects();
+    MODULES.forEach(m => {
+      const p = panes[m.id], r = rects[m.id];
+      p.el.style.left = r.x + '%'; p.el.style.top = r.y + '%';
+      p.el.style.width = r.w + '%'; p.el.style.height = r.h + '%';
+      const wasCenter = p.el.classList.contains('center');
+      const isCenter = r.role === 'center';
+      p.el.classList.toggle('center', isCenter);
+      p.el.classList.toggle('rail', !isCenter);
+      // reset volume to role default when the role changes
+      if(wasCenter !== isCenter){
+        p.vol = isCenter ? CENTER_VOL : RAIL_VOL;
+        p.slider.value = p.vol;
+      }
+      configure(m.id, isCenter ? CENTER_FPS : RAIL_FPS, p.vol);
+    });
+    savePrefs();
+  }
+
+  function configure(id, fps, volume){
+    const p = panes[id];
+    try { if(p.iframe.contentWindow && p.iframe.contentWindow.__shipConfig) p.iframe.contentWindow.__shipConfig({ fps, volume }); } catch(e){}
+  }
+  function setVolume(id, v){
+    const p = panes[id]; p.vol = v;
+    configure(id, p.el.classList.contains('center') ? CENTER_FPS : RAIL_FPS, v);
+    savePrefs();
+  }
+
+  function promote(id){
+    const i = assignment.indexOf(id);
+    if(i <= 0) return;
+    const tmp = assignment[0]; assignment[0] = assignment[i]; assignment[i] = tmp;
+    layout();
+  }
+
+  function setPreset(name){
+    preset = name;
+    // keep current featured-first ordering but fall back to preset default the first time
+    document.querySelectorAll('#presets button').forEach(b => b.classList.toggle('active', b.dataset.p === name));
+    layout();
+  }
+
+  // preset buttons
+  const presetsEl = document.getElementById('presets');
+  Object.keys(PRESETS).forEach(name => {
+    const b = document.createElement('button'); b.textContent = PRESETS[name].label; b.dataset.p = name;
+    b.addEventListener('click', () => setPreset(name));
+    presetsEl.appendChild(b);
+  });
+
+  // ---- persistence (localStorage) ----
+  function savePrefs(){
+    try { localStorage.setItem('shipConsole', JSON.stringify({ preset, assignment, vols: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].vol])) })); } catch(e){}
+  }
+  function loadPrefs(){
+    try {
+      const s = JSON.parse(localStorage.getItem('shipConsole')||'null');
+      if(s && s.assignment && s.assignment.length === N){ assignment = s.assignment; preset = s.preset || 'solo'; }
+      if(s && s.vols){ MODULES.forEach(m => { if(s.vols[m.id] != null){ panes[m.id].vol = s.vols[m.id]; panes[m.id].slider.value = s.vols[m.id]; } }); }
+    } catch(e){}
+  }
+
+  // ---- engage: one gesture boots every pane ----
+  document.getElementById('engage-btn').addEventListener('click', function(){
+    if(this.disabled) return;
+    booted = true;
+    // Direct synchronous calls into same-origin iframes keep the user
+    // activation, so each AudioContext is allowed to start.
+    MODULES.forEach(m => {
+      const p = panes[m.id];
+      try { if(p.iframe.contentWindow && p.iframe.contentWindow.__shipBoot) p.iframe.contentWindow.__shipBoot(); } catch(e){}
+    });
+    // apply per-pane fps/volume now that engines exist
+    layout();
+    document.getElementById('engage').style.display = 'none';
+  });
+
+  // init
+  loadPrefs();
+  setPreset(preset);
+})();
+</script>
+</body>
+</html>
