@@ -127,12 +127,13 @@ def main():
         port = int(os.environ["PORT"])
 
     httpd = ThreadingHTTPServer(("0.0.0.0", port), ShipHandler)
-    url = "http://localhost:%d/launcher.html" % port
+    base = "http://localhost:%d" % port
     print("Ship Data Screen Simulator — server running")
-    print("  Control deck : %s" % url)
-    print("  API health   : http://localhost:%d/api/health" % port)
-    print("  Serving      : %s" % ROOT)
-    print("  Stop         : Ctrl+C")
+    print("  Bridge Console : %s/app.html   (single-window data wall)" % base)
+    print("  Multi-window   : %s/launcher.html" % base)
+    print("  API health     : %s/api/health" % base)
+    print("  Serving        : %s" % ROOT)
+    print("  Stop           : Ctrl+C")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
