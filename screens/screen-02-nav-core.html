@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NAV CORE // CARTOGRAPHY</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#060A12;
+    --starlight:#CFE8FF;
+    --deep-cyan:#2E7D9E;
+    --waypoint:#B25CC9;
+    --ghost:#6E7A8A;
+    --line:#16202E;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; width:100%; height:100%; background:var(--void); color:var(--starlight);
+    font-family:'JetBrains Mono',monospace; overflow:hidden; }
+  #viewport{ position:fixed; inset:0; }
+  #viewport canvas{ display:block; width:100%; height:100%; }
+
+  /* thin top ticker */
+  #ticker{
+    position:fixed; top:0; left:0; right:0; height:40px; z-index:5;
+    display:flex; align-items:center; gap:26px; padding:0 20px;
+    background:linear-gradient(180deg, rgba(6,10,18,0.92), rgba(6,10,18,0.4));
+    border-bottom:1px solid var(--line);
+    font-size:11px; letter-spacing:0.14em; color:var(--ghost);
+  }
+  #ticker .brand{ font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:0.22em;
+    color:var(--starlight); text-transform:uppercase; }
+  #ticker b{ color:var(--deep-cyan); font-weight:400; }
+  #ticker .heading{ color:var(--waypoint); }
+  #ticker .mode{ margin-left:auto; display:flex; align-items:center; gap:8px; }
+  #ticker .dot{ width:7px; height:7px; border-radius:50%; background:var(--ghost); }
+  #ticker .dot.live{ background:var(--deep-cyan); box-shadow:0 0 7px var(--deep-cyan); }
+  #ticker .dot.synth{ background:var(--waypoint); box-shadow:0 0 7px var(--waypoint); }
+
+  /* slide-out waypoint list, left edge */
+  #waypoints{
+    position:fixed; top:56px; left:0; z-index:5;
+    width:216px; padding:14px 16px;
+    background:linear-gradient(90deg, rgba(6,10,18,0.9), rgba(6,10,18,0.15));
+    border-left:2px solid var(--waypoint);
+    transform:translateX(-176px); transition:transform .3s ease;
+  }
+  #waypoints:hover{ transform:translateX(0); }
+  #waypoints h2{ margin:0 0 10px; font-family:'Space Grotesk',sans-serif; font-size:11px;
+    letter-spacing:0.2em; color:var(--starlight); text-transform:uppercase; font-weight:500;}
+  .wp{ margin-bottom:11px; font-size:10.5px; line-height:1.5; }
+  .wp .desig{ color:var(--waypoint); font-weight:700; letter-spacing:0.1em; }
+  .wp .desig.next{ color:var(--starlight); }
+  .wp .meta{ color:var(--ghost); }
+  .wp .bar{ height:2px; margin-top:3px; background:var(--line); }
+  .wp .bar span{ display:block; height:100%; background:var(--deep-cyan); }
+  #waypoints .tab{ position:absolute; right:-2px; top:0; bottom:0; width:8px; }
+
+  #controls{
+    position:fixed; bottom:16px; right:16px; z-index:5;
+    background:rgba(6,10,18,0.82); border:1px solid var(--line); padding:12px 14px;
+    display:flex; flex-direction:column; gap:9px; min-width:190px;
+  }
+  .toggle-row{ display:flex; align-items:center; justify-content:space-between; font-size:10.5px;
+    letter-spacing:0.08em; color:var(--ghost); }
+  .toggle-row label{ font-family:'Space Grotesk',sans-serif; text-transform:uppercase; letter-spacing:0.12em; }
+  .switch{ width:34px; height:16px; background:var(--void); border:1px solid var(--line); position:relative; cursor:pointer; flex:none; }
+  .switch .knob{ position:absolute; top:1px; left:1px; width:12px; height:12px; background:var(--ghost); transition:all .15s ease; }
+  .switch.on{ border-color:var(--deep-cyan); }
+  .switch.on .knob{ left:19px; background:var(--deep-cyan); box-shadow:0 0 5px var(--deep-cyan); }
+
+  #boot-overlay{ position:fixed; inset:0; background:var(--void); z-index:50;
+    display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+  #boot-overlay .title{ font-family:'Space Grotesk',sans-serif; color:var(--starlight); font-size:22px; letter-spacing:0.24em; text-transform:uppercase; }
+  #boot-overlay p{ color:var(--ghost); font-size:12px; letter-spacing:0.08em; max-width:380px; text-align:center; line-height:1.6; }
+  #boot-btn{ font-family:'Space Grotesk',sans-serif; font-size:18px; letter-spacing:0.16em; font-weight:700;
+    text-transform:uppercase; background:transparent; border:1px solid var(--deep-cyan); color:var(--deep-cyan); padding:14px 34px; cursor:pointer; }
+  #boot-btn:hover{ background:var(--deep-cyan); color:var(--void); }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="boot-overlay">
+  <div class="title">Nav Core</div>
+  <p>Stellar cartography &amp; navigation plotting. An audio start gesture is required to initialize the plot. Microphone input will be requested — if unavailable, a synthetic deep-space signal drives the field instead.</p>
+  <button id="boot-btn">Plot Course</button>
+</div>
+
+<div id="viewport"></div>
+
+<div id="ticker">
+  <span class="brand">Nav Core</span>
+  <span>SECTOR <b id="sector">—</b></span>
+  <span>GAL.X <b id="gx">0.000</b></span>
+  <span>GAL.Y <b id="gy">0.000</b></span>
+  <span>GAL.Z <b id="gz">0.000</b></span>
+  <span>HDG <span class="heading" id="hdg">000.0°</span></span>
+  <span class="mode"><span id="mode-dot" class="dot"></span><span id="mode-text">STANDBY</span></span>
+</div>
+
+<div id="waypoints">
+  <div class="tab"></div>
+  <h2>◄ Route Plan</h2>
+  <div id="wp-list"></div>
+</div>
+
+<div id="controls">
+  <div class="toggle-row"><label>Beacon Bearing</label><div class="switch on" id="toggle-spatial"><div class="knob"></div></div></div>
+  <div class="toggle-row"><label>Arrival Chime</label><div class="switch on" id="toggle-standard"><div class="knob"></div></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../shared/audio-engine.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  const engine = new ShipAudioEngine({ fftSize: 2048, smoothing: 0.82 });
+  let spatialEnabled = true, standardEnabled = true;
+  document.getElementById('toggle-spatial').addEventListener('click', function(){ spatialEnabled=!spatialEnabled; this.classList.toggle('on',spatialEnabled); });
+  document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
+
+  document.getElementById('boot-btn').addEventListener('click', async function(){
+    this.disabled = true; this.textContent = 'Plotting…';
+    const mode = await engine.start();
+    document.getElementById('boot-overlay').classList.add('hidden');
+    const dot = document.getElementById('mode-dot'), txt = document.getElementById('mode-text');
+    if (mode==='mic'){ dot.classList.add('live'); txt.textContent='LIVE MIC'; }
+    else { dot.classList.add('synth'); txt.textContent='SYNTH FEED'; }
+    startAll();
+  });
+
+  // ---------- Three.js scene ----------
+  const vpEl = document.getElementById('viewport');
+  const renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+  renderer.setClearColor(0x060A12, 1);
+  vpEl.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x060A12, 0.018);
+  const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 400);
+  scene.add(new THREE.AmbientLight(0x223a4a, 1.4));
+
+  // Starfield
+  const STAR_COUNT = 3200;
+  const starGeo = new THREE.BufferGeometry();
+  const starPos = new Float32Array(STAR_COUNT*3);
+  for (let i=0;i<STAR_COUNT;i++){
+    starPos[i*3]   = (Math.random()-0.5)*260;
+    starPos[i*3+1] = (Math.random()-0.5)*160;
+    starPos[i*3+2] = (Math.random()-0.5)*260;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos,3));
+  const starMat = new THREE.PointsMaterial({ color:0xCFE8FF, size:0.5, sizeAttenuation:true, transparent:true, opacity:0.9 });
+  scene.add(new THREE.Points(starGeo, starMat));
+
+  // Route curve through the field
+  const ctrlPts = [
+    new THREE.Vector3(-40, -6, 60),
+    new THREE.Vector3(-14, 8, 22),
+    new THREE.Vector3(16, -4, -8),
+    new THREE.Vector3(30, 10, -46),
+    new THREE.Vector3(6, -8, -86),
+    new THREE.Vector3(-26, 4, -120)
+  ];
+  const curve = new THREE.CatmullRomCurve3(ctrlPts, false, 'catmullrom', 0.5);
+
+  const tubeGeo = new THREE.TubeGeometry(curve, 220, 0.5, 10, false);
+  const tubeMat = new THREE.MeshBasicMaterial({ color:0x2E7D9E, transparent:true, opacity:0.35, wireframe:true });
+  const tube = new THREE.Mesh(tubeGeo, tubeMat);
+  scene.add(tube);
+  const tubeCoreGeo = new THREE.TubeGeometry(curve, 220, 0.12, 8, false);
+  const tubeCoreMat = new THREE.MeshBasicMaterial({ color:0xB25CC9, transparent:true, opacity:0.6 });
+  scene.add(new THREE.Mesh(tubeCoreGeo, tubeCoreMat));
+
+  // Waypoints at select control points
+  const DESIGS = ['WP-ALPHA','WP-BETA','WP-GAMMA','WP-DELTA','WP-EPSILON'];
+  const waypoints = [];
+  const wpParams = [0.06, 0.28, 0.5, 0.72, 0.93];
+  wpParams.forEach((u, i) => {
+    const p = curve.getPointAt(u);
+    const geo = new THREE.OctahedronGeometry(1.6, 0);
+    const mat = new THREE.MeshBasicMaterial({ color:0xB25CC9, wireframe:true, transparent:true, opacity:0.9 });
+    const mesh = new THREE.Mesh(geo, mat); mesh.position.copy(p);
+    scene.add(mesh);
+    const haloGeo = new THREE.OctahedronGeometry(2.4, 0);
+    const halo = new THREE.Mesh(haloGeo, new THREE.MeshBasicMaterial({ color:0xB25CC9, wireframe:true, transparent:true, opacity:0.18 }));
+    halo.position.copy(p); scene.add(halo);
+    waypoints.push({ id:DESIGS[i], u, pos:p, mesh, halo, baseFreq:180+i*70, voice:null, arrived:false });
+  });
+
+  function resize(){
+    const w = vpEl.clientWidth, h = vpEl.clientHeight;
+    renderer.setSize(w,h,false);
+    camera.aspect = w/Math.max(h,1); camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+
+  // ---------- Waypoint list DOM ----------
+  const wpListEl = document.getElementById('wp-list');
+
+  // ---------- Main loop ----------
+  let running=false, journey=0;
+  function startAll(){ resize(); running=true; requestAnimationFrame(loop); }
+
+  const _tmp = new THREE.Vector3();
+  function loop(t){
+    if(!running) return;
+    requestAnimationFrame(loop);
+    const time = t*0.001;
+    const freq = engine.getFrequencyData();
+    const level = engine.getLevel();
+
+    // camera drifts forward along the route, looping
+    journey = (journey + 0.00035) % 1;
+    const camU = journey;
+    const camPos = curve.getPointAt(camU);
+    const aheadU = (camU + 0.02) % 1;
+    const ahead = curve.getPointAt(aheadU);
+    // small orbital sway so it doesn't feel on-rails
+    camera.position.copy(camPos).add(_tmp.set(Math.sin(time*0.3)*3, 2.4+Math.cos(time*0.24)*1.5, Math.cos(time*0.3)*3));
+    camera.lookAt(ahead);
+
+    // route tube glow folds in FFT energy (no dedicated waterfall panel)
+    let bandSum=0; for(let b=0;b<64;b++) bandSum+=freq[b];
+    const glow = bandSum/(64*255);
+    tubeCoreMat.opacity = 0.4 + glow*0.55;
+    tubeMat.opacity = 0.25 + glow*0.3;
+
+    // ticker
+    document.getElementById('gx').textContent = camPos.x.toFixed(3);
+    document.getElementById('gy').textContent = camPos.y.toFixed(3);
+    document.getElementById('gz').textContent = camPos.z.toFixed(3);
+    const dir = ahead.clone().sub(camPos);
+    const hdg = ((Math.atan2(dir.x, -dir.z)*180/Math.PI)+360)%360;
+    document.getElementById('hdg').textContent = hdg.toFixed(1)+'°';
+    document.getElementById('sector').textContent = 'K-' + (Math.floor(camU*40)+11);
+
+    // find next waypoint (smallest u greater than camU)
+    let nextIdx=-1, nextGap=2;
+    waypoints.forEach((w,i)=>{ let g=w.u-camU; if(g<0)g+=1; if(g<nextGap){nextGap=g;nextIdx=i;} });
+
+    let html='';
+    waypoints.forEach((w,i)=>{
+      w.mesh.rotation.y += 0.01; w.mesh.rotation.x += 0.006;
+      w.halo.rotation.y -= 0.008;
+      const dist = camPos.distanceTo(w.pos);
+      const isNext = i===nextIdx;
+      const pulse = isNext ? (0.9+Math.sin(time*4)*0.1) : 0.6;
+      w.mesh.material.opacity = pulse;
+      w.mesh.scale.setScalar(isNext ? 1.15+Math.sin(time*4)*0.08 : 1);
+
+      // spatial beacon: bearing audible, transformed into camera/listener frame
+      if (spatialEnabled){
+        if(!w.voice) w.voice = engine.createSpatialVoice({ freq:w.baseFreq, type:'sine' });
+        _tmp.copy(w.pos); camera.worldToLocal(_tmp);
+        const s = 0.35; w.voice.setPosition(_tmp.x*s, _tmp.y*s, _tmp.z*s);
+        // doppler-style: pitch rises as the next waypoint approach tightens
+        const closeness = isNext ? Math.max(0, 1-nextGap*6) : 0;
+        w.voice.setFrequency(w.baseFreq * (1 + closeness*0.5));
+        w.voice.setGain(Math.max(0.04, 0.5 - dist*0.006));
+      } else if (w.voice){ w.voice.stop(); w.voice=null; }
+
+      // arrival chime when the camera crosses a waypoint
+      if (dist < 5 && !w.arrived){
+        w.arrived = true;
+        if (standardEnabled) engine.pingStandard({ freq:w.baseFreq*3, pan:0, duration:0.5, type:'sine', gain:0.35 });
+      } else if (dist > 9){ w.arrived = false; }
+
+      html += `<div class="wp"><span class="desig ${isNext?'next':''}">${w.id}</span>`+
+              `<div class="meta">DIST ${dist.toFixed(1)} · ETA ${(dist*0.6).toFixed(0)}s</div>`+
+              `<div class="bar"><span style="width:${Math.max(4,100-dist*1.2)}%"></span></div></div>`;
+    });
+    wpListEl.innerHTML = html;
+
+    renderer.render(scene, camera);
+  }
+})();
+</script>
+</body>
+</html>

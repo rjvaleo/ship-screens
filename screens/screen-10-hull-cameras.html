@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HULL CAMERAS // OPTICAL ARRAY</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700&family=Cousine:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --charcoal:#0B0C0D;
+    --green:#39FF6A;
+    --red:#E8483B;
+    --chrome:#9CA3A0;
+    --amber:#E0A458;
+    --line:#1A1C1D;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; width:100%; height:100%; background:var(--charcoal); color:var(--chrome);
+    font-family:'Cousine','Space Mono',monospace; overflow:hidden; }
+  .disp{ font-family:'Titillium Web',sans-serif; font-weight:600; }
+  #app{ position:fixed; inset:0; display:grid; grid-template-rows:40px 1fr 38px; }
+  #topbar{ display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:#0E0F10; border-bottom:1px solid var(--line); }
+  #topbar .id{ font-family:'Titillium Web',sans-serif; font-weight:700; font-size:16px; letter-spacing:0.12em; color:var(--green); }
+  #topbar .sub{ font-size:11px; color:var(--chrome); letter-spacing:0.1em; margin-left:10px; opacity:0.6; }
+  #topbar .mode{ font-size:11px; display:flex; align-items:center; gap:8px; }
+  #topbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--chrome); }
+  #topbar .dot.live{ background:var(--green); box-shadow:0 0 6px var(--green); }
+  #topbar .dot.synth{ background:var(--amber); box-shadow:0 0 6px var(--amber); }
+
+  #feeds{ position:relative; }
+  #feeds canvas{ display:block; width:100%; height:100%; }
+  /* HUD overlay grid */
+  #hud{ position:absolute; inset:0; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; pointer-events:none; }
+  .cell{ position:relative; border:1px solid rgba(57,255,106,0.14); overflow:hidden; }
+  .cell .label{ position:absolute; top:8px; left:10px; font-size:11px; color:var(--green); letter-spacing:0.12em; text-shadow:0 0 4px rgba(57,255,106,0.5); }
+  .cell .ts{ position:absolute; top:8px; right:10px; font-size:10px; color:var(--green); opacity:0.75; }
+  .cell .rec{ position:absolute; bottom:8px; left:10px; font-size:10px; color:var(--red); display:flex; align-items:center; gap:5px; }
+  .cell .rec .bd{ width:7px; height:7px; border-radius:50%; background:var(--red); }
+  .cell .alert{ position:absolute; bottom:8px; right:10px; font-size:10px; color:var(--red); letter-spacing:0.1em; opacity:0; }
+  .cell .cross{ position:absolute; top:50%; left:50%; width:26px; height:26px; transform:translate(-50%,-50%); }
+  .cell .cross::before,.cell .cross::after{ content:''; position:absolute; background:rgba(57,255,106,0.6); }
+  .cell .cross::before{ left:50%; top:0; width:1px; height:100%; transform:translateX(-50%); }
+  .cell .cross::after{ top:50%; left:0; height:1px; width:100%; transform:translateY(-50%); }
+  #scanlines{ position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.12) 3px); mix-blend-mode:multiply; }
+
+  #spectral{ position:relative; border-top:1px solid var(--line); background:#0E0F10; }
+  #spectral canvas{ display:block; width:100%; height:100%; }
+  #spectral .lbl{ position:absolute; top:4px; left:16px; font-size:9px; color:var(--chrome); opacity:0.6; letter-spacing:0.14em; }
+
+  .float-controls{ position:fixed; top:46px; right:12px; z-index:6; background:rgba(11,12,13,0.85); border:1px solid var(--line); padding:9px 11px; display:flex; flex-direction:column; gap:7px; min-width:190px; }
+  .toggle-row{ display:flex; align-items:center; justify-content:space-between; font-size:10px; letter-spacing:0.05em; color:var(--chrome); }
+  .toggle-row label{ font-family:'Titillium Web',sans-serif; font-weight:600; letter-spacing:0.04em; }
+  .switch{ width:34px; height:16px; background:var(--charcoal); border:1px solid var(--line); position:relative; cursor:pointer; flex:none; }
+  .switch .knob{ position:absolute; top:1px; left:1px; width:12px; height:12px; background:var(--chrome); transition:all .15s ease; }
+  .switch.on{ border-color:var(--green); }
+  .switch.on .knob{ left:19px; background:var(--green); box-shadow:0 0 5px var(--green); }
+
+  #boot-overlay{ position:fixed; inset:0; background:var(--charcoal); z-index:50; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+  #boot-overlay .title{ font-family:'Titillium Web',sans-serif; font-weight:700; color:var(--green); font-size:22px; letter-spacing:0.1em; }
+  #boot-overlay p{ color:var(--chrome); opacity:0.7; font-size:12px; max-width:390px; text-align:center; line-height:1.6; }
+  #boot-btn{ font-family:'Titillium Web',sans-serif; font-weight:700; font-size:15px; letter-spacing:0.08em; background:transparent; border:1px solid var(--green); color:var(--green); padding:13px 32px; cursor:pointer; }
+  #boot-btn:hover{ background:var(--green); color:var(--charcoal); }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="boot-overlay">
+  <div class="title">Hull Cameras</div>
+  <p>External optical array. An audio start gesture is required to bring the feeds online. Four cameras observe one shared debris field; proximity alerts trigger as objects approach the hull.</p>
+  <button id="boot-btn">Bring Feeds Online</button>
+</div>
+
+<div id="app">
+  <div id="topbar">
+    <div style="display:flex;align-items:baseline;"><span class="id">Hull Cameras</span><span class="sub">EXT-OPT · QUAD FEED</span></div>
+    <div class="mode"><span id="mode-dot" class="dot"></span><span id="mode-text">STANDBY</span></div>
+  </div>
+  <div id="feeds">
+    <canvas id="feed-canvas"></canvas>
+    <div id="hud"></div>
+    <div id="scanlines"></div>
+  </div>
+  <div id="spectral"><div class="lbl">ACOUSTIC SIGNATURE · FULL ARRAY</div></div>
+</div>
+
+<div class="float-controls">
+  <div class="toggle-row"><label>Directional Ping (3D)</label><div class="switch on" id="toggle-spatial"><div class="knob"></div></div></div>
+  <div class="toggle-row"><label>Proximity Alert</label><div class="switch on" id="toggle-standard"><div class="knob"></div></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../shared/audio-engine.js"></script>
+<script>
+(function(){
+  'use strict';
+  const engine = new ShipAudioEngine({ fftSize: 2048, smoothing: 0.75 });
+  let spatialEnabled=true, standardEnabled=true;
+  document.getElementById('toggle-spatial').addEventListener('click', function(){ spatialEnabled=!spatialEnabled; this.classList.toggle('on',spatialEnabled); });
+  document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
+  document.getElementById('boot-btn').addEventListener('click', async function(){
+    this.disabled=true; this.textContent='Connecting…';
+    const mode=await engine.start();
+    document.getElementById('boot-overlay').classList.add('hidden');
+    const dot=document.getElementById('mode-dot'), txt=document.getElementById('mode-text');
+    if(mode==='mic'){ dot.classList.add('live'); txt.textContent='LIVE MIC'; } else { dot.classList.add('synth'); txt.textContent='SYNTH FEED'; }
+    startAll();
+  });
+
+  // ---------- HUD cells ----------
+  const FEEDS=[
+    { id:'CAM-01', tag:'FWD',  cam:null, dir:new THREE.Vector3(0,0,14) },
+    { id:'CAM-02', tag:'AFT',  cam:null, dir:new THREE.Vector3(0,1,-14) },
+    { id:'CAM-03', tag:'PORT', cam:null, dir:new THREE.Vector3(-14,0,2) },
+    { id:'CAM-04', tag:'STBD·DORSAL', cam:null, dir:new THREE.Vector3(12,7,4) }
+  ];
+  const hud=document.getElementById('hud');
+  FEEDS.forEach(f=>{
+    const cell=document.createElement('div'); cell.className='cell';
+    cell.innerHTML=`<div class="label">${f.id} · ${f.tag}</div><div class="ts">00:00:00</div><div class="cross"></div><div class="rec"><span class="bd"></span>REC</div><div class="alert">⚠ PROXIMITY</div>`;
+    hud.appendChild(cell); f.cell=cell; f.tsEl=cell.querySelector('.ts'); f.alertEl=cell.querySelector('.alert');
+  });
+
+  // ---------- Shared 3D scene ----------
+  const feedsEl=document.getElementById('feeds');
+  const canvas=document.getElementById('feed-canvas');
+  const renderer=new THREE.WebGLRenderer({ canvas, antialias:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+  renderer.setClearColor(0x070808,1);
+  renderer.autoClear=true;
+  const scene=new THREE.Scene();
+  scene.fog=new THREE.FogExp2(0x070808,0.02);
+  scene.add(new THREE.AmbientLight(0x0e1a12,0.8));
+  const key=new THREE.DirectionalLight(0xffffff,1.5); key.position.set(6,10,8); scene.add(key);
+  const fill=new THREE.PointLight(0x39FF6A,0.5,40); fill.position.set(-8,-4,-6); scene.add(fill);
+
+  // ship hull marker at origin
+  const hull=new THREE.Mesh(new THREE.IcosahedronGeometry(1.1,0), new THREE.MeshStandardMaterial({ color:0x2a2e30, metalness:0.6, roughness:0.5, flatShading:true }));
+  scene.add(hull);
+  const hullRing=new THREE.Mesh(new THREE.TorusGeometry(1.8,0.03,8,48), new THREE.MeshBasicMaterial({ color:0x39FF6A, transparent:true, opacity:0.3 }));
+  scene.add(hullRing);
+
+  // debris field
+  const DEBRIS=20; const debris=[];
+  for(let i=0;i<DEBRIS;i++){
+    const m=new THREE.Mesh(new THREE.IcosahedronGeometry(0.25+Math.random()*0.5, 0), new THREE.MeshStandardMaterial({ color:0x8a8f92, metalness:0.4, roughness:0.7, flatShading:true }));
+    resetDebris(m, true);
+    scene.add(m);
+    debris.push({ mesh:m, vel:new THREE.Vector3((Math.random()-0.5)*0.02,(Math.random()-0.5)*0.02,(Math.random()-0.5)*0.02),
+      spin:new THREE.Vector3(Math.random()*0.02,Math.random()*0.02,Math.random()*0.02), near:false, binLo:Math.floor(20+i*40), baseFreq:200+i*40 });
+  }
+  function resetDebris(m, initial){
+    const r=14+Math.random()*8, th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
+    m.position.set(r*Math.sin(ph)*Math.cos(th), r*Math.sin(ph)*Math.sin(th)*0.5, r*Math.cos(ph));
+    if(initial) m.rotation.set(Math.random()*6,Math.random()*6,Math.random()*6);
+  }
+
+  // cameras
+  FEEDS.forEach(f=>{ const c=new THREE.PerspectiveCamera(48,1,0.1,200); c.position.copy(f.dir); c.lookAt(0,0,0); f.cam=c; });
+
+  function resize(){
+    const w=feedsEl.clientWidth, h=feedsEl.clientHeight;
+    renderer.setSize(w,h,false);
+    const half=Math.max(w/2, h/2), aspect=(w/2)/Math.max(h/2,1);
+    FEEDS.forEach(f=>{ f.cam.aspect=aspect; f.cam.updateProjectionMatrix(); });
+    resizeSpectral();
+  }
+  window.addEventListener('resize', resize);
+
+  // ---------- shared spectral strip ----------
+  const specEl=document.getElementById('spectral');
+  const specCanvas=document.createElement('canvas'); specEl.appendChild(specCanvas); const specCtx=specCanvas.getContext('2d');
+  function resizeSpectral(){ specCanvas.width=specEl.clientWidth; specCanvas.height=specEl.clientHeight; }
+  function drawSpectral(freq){
+    const w=specCanvas.width,h=specCanvas.height; if(!w||!h) return;
+    specCtx.clearRect(0,0,w,h);
+    for(let x=0;x<w;x++){ const idx=Math.floor(x/w*freq.length*0.6); const v=freq[idx]/255; specCtx.fillStyle=`rgba(57,255,106,${0.15+v*0.7})`; specCtx.fillRect(x, h-v*h, 1, v*h); }
+  }
+
+  // ---------- loop ----------
+  let running=false;
+  const PROX=4.5;
+  function startAll(){ resize(); running=true; requestAnimationFrame(loop); }
+
+  function loop(t){
+    if(!running) return; requestAnimationFrame(loop);
+    const time=t*0.001;
+    const freq=engine.getFrequencyData();
+    const ts=new Date().toISOString().substr(11,8);
+
+    hull.rotation.y+=0.002; hullRing.rotation.x+=0.004; hullRing.rotation.y+=0.002;
+
+    // drift debris + proximity detection
+    debris.forEach((d,i)=>{
+      d.mesh.position.add(d.vel);
+      d.mesh.rotation.x+=d.spin.x; d.mesh.rotation.y+=d.spin.y; d.mesh.rotation.z+=d.spin.z;
+      // gentle pull so objects pass near the hull then recede
+      const dist=d.mesh.position.length();
+      if(dist>24) resetDebris(d.mesh,false);
+      const isNear=dist<PROX;
+      if(isNear && !d.near){
+        d.near=true;
+        const closeness=(PROX-dist)/PROX;
+        // nearest camera to this debris
+        let nc=FEEDS[0], best=1e9;
+        FEEDS.forEach(f=>{ const dd=f.cam.position.distanceTo(d.mesh.position); if(dd<best){ best=dd; nc=f; } });
+        nc.alertEl.style.opacity=1; setTimeout(()=>{ nc.alertEl.style.opacity=0; }, 600);
+        if(standardEnabled) engine.pingStandard({ freq:300+closeness*400, pan:nc.dir.x/14, duration:0.2, type:'square', gain:0.15+closeness*0.25 });
+        if(spatialEnabled){ const v=engine.createSpatialVoice({ freq:d.baseFreq, type:'triangle' }); const dir=nc.dir.clone().normalize().multiplyScalar(3); v.setPosition(dir.x,dir.y,dir.z); v.setGain(0.4); setTimeout(()=>v.stop(0.1),200); }
+      } else if(dist>PROX*1.3){ d.near=false; }
+      // color hot when near
+      d.mesh.material.color.setHex(isNear ? 0xE8483B : 0x8a8f92);
+    });
+
+    // render four viewports of the shared scene (WebGL origin is bottom-left)
+    const w=canvas.width, h=canvas.height, hw=w/2, hh=h/2;
+    const rects=[ [0,hh,hw,hh], [hw,hh,hw,hh], [0,0,hw,hh], [hw,0,hw,hh] ]; // TL,TR,BL,BR
+    renderer.setScissorTest(true);
+    FEEDS.forEach((f,i)=>{
+      const r=rects[i];
+      // subtle camera sway per feed
+      f.cam.position.copy(f.dir); f.cam.position.x+=Math.sin(time*0.3+i)*0.4; f.cam.position.y+=Math.cos(time*0.24+i)*0.3; f.cam.lookAt(0,0,0);
+      renderer.setViewport(r[0],r[1],r[2],r[3]);
+      renderer.setScissor(r[0],r[1],r[2],r[3]);
+      renderer.render(scene, f.cam);
+      f.tsEl.textContent=ts;
+    });
+    renderer.setScissorTest(false);
+
+    drawSpectral(freq);
+  }
+})();
+</script>
+</body>
+</html>

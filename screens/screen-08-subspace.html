@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SUBSPACE // WARP HARMONICS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#05040F;
+    --violet:#8B5CF6;
+    --cyan:#4DE8E0;
+    --flare:#F4F0FF;
+    --magenta:#C23FBE;
+    --dim:#5B5580;
+    --line:#161232;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; width:100%; height:100%; background:var(--void); color:var(--flare);
+    font-family:'Space Mono',monospace; overflow:hidden; }
+  .disp{ font-family:'Sora',sans-serif; font-weight:500; letter-spacing:0.02em; }
+  #viewport{ position:fixed; inset:0; }
+  #viewport canvas{ display:block; width:100%; height:100%; }
+
+  #topbar{ position:fixed; top:0; left:0; right:0; height:44px; z-index:5; display:flex; align-items:center; justify-content:space-between; padding:0 20px;
+    background:linear-gradient(180deg, rgba(5,4,15,0.94), rgba(5,4,15,0.2)); border-bottom:1px solid var(--line); }
+  #topbar .id{ font-family:'Sora',sans-serif; font-weight:700; font-size:17px; letter-spacing:0.1em; color:var(--violet); }
+  #topbar .sub{ font-size:11px; color:var(--dim); letter-spacing:0.12em; margin-left:10px; }
+  #topbar .mode{ font-size:11px; display:flex; align-items:center; gap:8px; color:var(--dim); }
+  #topbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--dim); }
+  #topbar .dot.live{ background:var(--cyan); box-shadow:0 0 6px var(--cyan); }
+  #topbar .dot.synth{ background:var(--magenta); box-shadow:0 0 6px var(--magenta); }
+
+  /* harmonic-series ladder */
+  #ladder{ position:fixed; top:56px; right:14px; z-index:5; width:120px; background:rgba(5,4,15,0.6); border:1px solid var(--line); padding:10px; }
+  #ladder h2{ margin:0 0 8px; font-family:'Sora',sans-serif; font-size:10px; letter-spacing:0.14em; color:var(--dim); font-weight:500; }
+  .harm{ display:flex; align-items:center; gap:6px; margin-bottom:5px; font-size:9px; color:var(--dim); }
+  .harm .n{ width:26px; }
+  .harm .track{ flex:1; height:6px; background:var(--line); }
+  .harm .track span{ display:block; height:100%; background:linear-gradient(90deg,var(--violet),var(--cyan)); }
+
+  /* Lissajous scope */
+  #lissa{ position:fixed; left:14px; bottom:14px; z-index:5; width:180px; height:180px; background:rgba(5,4,15,0.6); border:1px solid var(--line); }
+  #lissa canvas{ display:block; width:100%; height:100%; }
+  #lissa .lbl{ position:absolute; top:6px; left:8px; font-size:9px; color:var(--dim); letter-spacing:0.12em; }
+
+  .float-controls{ position:fixed; bottom:14px; right:14px; z-index:6; background:rgba(5,4,15,0.85); border:1px solid var(--line); padding:10px 12px; display:flex; flex-direction:column; gap:8px; min-width:200px; }
+  .toggle-row{ display:flex; align-items:center; justify-content:space-between; font-size:10px; letter-spacing:0.06em; color:var(--dim); }
+  .toggle-row label{ font-family:'Sora',sans-serif; font-weight:500; }
+  .switch{ width:34px; height:16px; background:var(--void); border:1px solid var(--line); position:relative; cursor:pointer; flex:none; }
+  .switch .knob{ position:absolute; top:1px; left:1px; width:12px; height:12px; background:var(--dim); transition:all .15s ease; }
+  .switch.on{ border-color:var(--cyan); }
+  .switch.on .knob{ left:19px; background:var(--cyan); box-shadow:0 0 5px var(--cyan); }
+
+  #boot-overlay{ position:fixed; inset:0; background:var(--void); z-index:50; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+  #boot-overlay .title{ font-family:'Sora',sans-serif; font-weight:700; color:var(--violet); font-size:23px; letter-spacing:0.1em; }
+  #boot-overlay p{ color:var(--dim); font-size:12px; max-width:390px; text-align:center; line-height:1.6; }
+  #boot-btn{ font-family:'Sora',sans-serif; font-weight:700; font-size:16px; letter-spacing:0.08em; background:transparent; border:1px solid var(--cyan); color:var(--cyan); padding:14px 34px; cursor:pointer; }
+  #boot-btn:hover{ background:var(--cyan); color:var(--void); }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="boot-overlay">
+  <div class="title">Subspace</div>
+  <p>FTL warp-field harmonics. An audio start gesture is required to energize the field. Dominant spectral peaks are mapped onto a musical harmonic series — headphones recommended.</p>
+  <button id="boot-btn">Energize Field</button>
+</div>
+
+<div id="viewport"></div>
+
+<div id="topbar">
+  <div style="display:flex;align-items:baseline;"><span class="id">Subspace</span><span class="sub">FTL-FIELD · HARMONIC LATTICE</span></div>
+  <div class="mode"><span id="mode-dot" class="dot"></span><span id="mode-text">STANDBY</span></div>
+</div>
+
+<div id="ladder"><h2>HARMONIC SERIES</h2><div id="harm-list"></div></div>
+
+<div id="lissa"><div class="lbl">LISSAJOUS · X/Y PHASE</div></div>
+
+<div class="float-controls">
+  <div class="toggle-row"><label>Orbiting Voice (3D)</label><div class="switch on" id="toggle-spatial"><div class="knob"></div></div></div>
+  <div class="toggle-row"><label>Harmonic Tones</label><div class="switch on" id="toggle-standard"><div class="knob"></div></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../shared/audio-engine.js"></script>
+<script>
+(function(){
+  'use strict';
+  const engine = new ShipAudioEngine({ fftSize: 2048, smoothing: 0.78 });
+  let spatialEnabled=true, standardEnabled=true;
+  document.getElementById('toggle-spatial').addEventListener('click', function(){ spatialEnabled=!spatialEnabled; this.classList.toggle('on',spatialEnabled); });
+  document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
+  document.getElementById('boot-btn').addEventListener('click', async function(){
+    this.disabled=true; this.textContent='Energizing…';
+    const mode=await engine.start();
+    document.getElementById('boot-overlay').classList.add('hidden');
+    const dot=document.getElementById('mode-dot'), txt=document.getElementById('mode-text');
+    if(mode==='mic'){ dot.classList.add('live'); txt.textContent='LIVE MIC'; } else { dot.classList.add('synth'); txt.textContent='SYNTH FEED'; }
+    startAll();
+  });
+
+  // ---------- Three.js field-line tunnel ----------
+  const vpEl=document.getElementById('viewport');
+  const renderer=new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+  renderer.setClearColor(0x05040F,1);
+  vpEl.appendChild(renderer.domElement);
+  const scene=new THREE.Scene();
+  scene.fog=new THREE.FogExp2(0x05040F,0.03);
+  const camera=new THREE.PerspectiveCamera(64,1,0.1,200); camera.position.set(0,0,6); camera.lookAt(0,0,-20);
+  scene.add(new THREE.AmbientLight(0x332a55,1.5));
+
+  const TUBES=14, SEG=90;
+  const tubes=[];
+  for(let i=0;i<TUBES;i++){
+    const theta=i/TUBES*Math.PI*2;
+    const R=3.0;
+    const pts=[];
+    for(let s=0;s<=SEG;s++){ const z=8 - s/SEG*60; pts.push(new THREE.Vector3(Math.cos(theta)*R, Math.sin(theta)*R, z)); }
+    const curve=new THREE.CatmullRomCurve3(pts);
+    const geo=new THREE.TubeGeometry(curve, SEG, 0.045, 6, false);
+    const basePos=geo.attributes.position.array.slice();
+    const col=new THREE.Color().setHSL(0.72 - i/TUBES*0.18, 0.7, 0.6);
+    const mesh=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color:col, transparent:true, opacity:0.7 }));
+    scene.add(mesh);
+    tubes.push({ mesh, basePos, cos:Math.cos(theta), sin:Math.sin(theta) });
+  }
+
+  function resize(){ const w=vpEl.clientWidth,h=vpEl.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/Math.max(h,1); camera.updateProjectionMatrix(); resizeLissa(); }
+  window.addEventListener('resize', resize);
+
+  // ---------- harmonic ladder DOM ----------
+  const HARMONICS=8;
+  const harmList=document.getElementById('harm-list'); const harmBars=[];
+  for(let n=1;n<=HARMONICS;n++){
+    const row=document.createElement('div'); row.className='harm';
+    row.innerHTML=`<span class="n">×${n}</span><div class="track"><span></span></div>`;
+    harmList.appendChild(row); harmBars.push(row.querySelector('.track span'));
+  }
+
+  // ---------- Lissajous scope ----------
+  const lissaEl=document.getElementById('lissa');
+  const lissaCanvas=document.createElement('canvas'); lissaEl.appendChild(lissaCanvas); const lissaCtx=lissaCanvas.getContext('2d');
+  function resizeLissa(){ lissaCanvas.width=lissaEl.clientWidth; lissaCanvas.height=lissaEl.clientHeight; }
+  function drawLissa(time){
+    const w=lissaCanvas.width,h=lissaCanvas.height; if(!w||!h) return;
+    lissaCtx.fillStyle='rgba(5,4,15,0.28)'; lissaCtx.fillRect(0,0,w,h);
+    lissaCtx.strokeStyle='#4DE8E0'; lissaCtx.lineWidth=1.2; lissaCtx.beginPath();
+    const n=time.length, q=Math.floor(n/4);
+    for(let i=0;i<n-q;i+=2){
+      const x=w/2 + ((time[i]-128)/128)*(w*0.42);
+      const y=h/2 + ((time[i+q]-128)/128)*(h*0.42);
+      if(i===0) lissaCtx.moveTo(x,y); else lissaCtx.lineTo(x,y);
+    }
+    lissaCtx.stroke();
+  }
+
+  // ---------- loop ----------
+  let running=false, orbitVoice=null, lastHarmonic=0;
+  function startAll(){ resize(); running=true; requestAnimationFrame(loop); }
+
+  function dominantPeak(freq){
+    let maxV=0, maxI=1;
+    for(let i=2;i<freq.length*0.5;i++){ if(freq[i]>maxV){ maxV=freq[i]; maxI=i; } }
+    return { idx:maxI, val:maxV/255 };
+  }
+
+  function loop(t){
+    if(!running) return; requestAnimationFrame(loop);
+    const time=t*0.001;
+    const freq=engine.getFrequencyData();
+    const timeData=engine.getTimeDomainData();
+    const peak=dominantPeak(freq);
+    const amp=peak.val;
+
+    // standing-wave distortion of field lines, scaled by dominant peak
+    const waveK=0.35 + peak.idx*0.004;
+    const speed=time*2.2;
+    tubes.forEach(tb=>{
+      const pos=tb.mesh.geometry.attributes.position.array;
+      const base=tb.basePos;
+      for(let i=0;i<pos.length;i+=3){
+        const z=base[i+2];
+        const wave=Math.sin(z*waveK + speed)* (0.5 + amp*2.2);
+        pos[i]=base[i] + tb.cos*wave;
+        pos[i+1]=base[i+1] + tb.sin*wave;
+        pos[i+2]=z;
+      }
+      tb.mesh.geometry.attributes.position.needsUpdate=true;
+      tb.mesh.material.opacity=0.4+amp*0.5;
+    });
+    // slow field rotation
+    scene.rotation.z = Math.sin(time*0.15)*0.25;
+    camera.position.x=Math.sin(time*0.2)*0.6; camera.position.y=Math.cos(time*0.17)*0.4; camera.lookAt(0,0,-20);
+
+    // harmonic ladder: amplitude at fundamental*n
+    const fund=peak.idx;
+    for(let n=1;n<=HARMONICS;n++){ const bin=Math.min(freq.length-1, fund*n); const v=freq[bin]/255; harmBars[n-1].style.width=(v*100).toFixed(0)+'%'; }
+
+    // orbiting spatial voice (single, continuous)
+    if(spatialEnabled){ if(!orbitVoice) orbitVoice=engine.createSpatialVoice({ freq:110, type:'sine' }); const r=5; orbitVoice.setPosition(Math.cos(time*0.8)*r, Math.sin(time*0.5)*1.5, Math.sin(time*0.8)*r); orbitVoice.setFrequency(80 + fund*1.2); orbitVoice.setGain(0.1+amp*0.35); }
+    else if(orbitVoice){ orbitVoice.stop(); orbitVoice=null; }
+
+    // harmonic-series standard sonification (musical overtones of a fundamental)
+    if(standardEnabled && amp>0.35 && time-lastHarmonic>0.5){
+      lastHarmonic=time;
+      const f0=90 + fund*1.4;
+      for(let n=1;n<=5;n++){ const bin=Math.min(freq.length-1, fund*n); const g=(freq[bin]/255)*0.12; if(g>0.02) engine.pingStandard({ freq:f0*n, pan:(n%2?-0.3:0.3), duration:0.5, type:'sine', gain:g }); }
+    }
+
+    drawLissa(timeData);
+    renderer.render(scene,camera);
+  }
+})();
+</script>
+</body>
+</html>

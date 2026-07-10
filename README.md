@@ -9,8 +9,8 @@
 ![Build](https://img.shields.io/badge/build-none%20(open%20the%20file)-success)
 ![Dependencies](https://img.shields.io/badge/npm%20dependencies-0-brightgreen)
 ![Runtime](https://img.shields.io/badge/runs%20on-file%3A%2F%2F%20or%20localhost-blue)
-![Screens](https://img.shields.io/badge/screens-1%20%2F%2010%20online-orange)
-![Status](https://img.shields.io/badge/status-WIP-yellow)
+![Screens](https://img.shields.io/badge/screens-10%20%2F%2010%20online-brightgreen)
+![Status](https://img.shields.io/badge/status-complete-brightgreen)
 
 > Handing this to Claude Code? Start with **CLAUDE.md** (conventions, hard
 > constraints, shared audio API reference) and **ROADMAP.md** (full design
@@ -127,15 +127,15 @@ default.
 | # | Screen | Concept | Status |
 |---|--------|---------|--------|
 | 1 | Comms Array | Long-range signal intelligence: 3D contact constellation, spectrograph waterfall, spatial + standard sonification | ✅ built |
-| 2 | Nav Core | Stellar cartography / navigation plotting | pending |
-| 3 | Reactor | Engineering core telemetry | pending |
-| 4 | Threat Matrix | Tactical / weapons targeting | pending |
-| 5 | Anomaly | Xenoscience / anomaly detection scan | pending |
-| 6 | Life Support | Atmospherics & environmental systems | pending |
-| 7 | Cryo Bay | Medical / cryo-stasis monitoring | pending |
-| 8 | Subspace | FTL / warp field harmonics | pending |
-| 9 | AI Core | Ship neural substrate visualization | pending |
-| 10 | Hull Cameras | External optical array | pending |
+| 2 | Nav Core | Stellar cartography: full-bleed starfield, glowing route tube, camera drift, beacon bearings | ✅ built |
+| 3 | Reactor | Engineering telemetry: bass-driven containment torus, thermal spectrograph, industrial klaxons | ✅ built |
+| 4 | Threat Matrix | Tactical targeting: rotating 3D sweep, deterministic ping on sweep-crossing, hostile drones | ✅ built |
+| 5 | Anomaly | Xenoscience: transient-detection RGB-split glitch, ephemeral spatial contacts, jittering chrome | ✅ built |
+| 6 | Life Support | Atmospherics: breathing deck ring on a respiration rhythm, position-encoded zone alarms | ✅ built |
+| 7 | Cryo Bay | Medical stasis (light-mode): pod tiles sonified from simulated vitals, positional heartbeat beeps | ✅ built |
+| 8 | Subspace | Warp harmonics: standing-wave field-line tunnel, harmonic-series tones, Lissajous XY scope | ✅ built |
+| 9 | AI Core | Neural substrate: node-graph cascades, radial spectrograph, position-hashed thought blips | ✅ built |
+| 10 | Hull Cameras | External optical: one debris scene in a 2×2 viewport grid, proximity alerts | ✅ built |
 
 Screens 2–10 will be added one at a time — `launcher.html` will pick each one
 up automatically as its entry in `SCREENS` is flipped from `pending` to

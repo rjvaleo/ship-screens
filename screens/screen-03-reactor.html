@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>REACTOR // CONTAINMENT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --iron:#0C0F0A;
+    --panel:#12140E;
+    --orange:#FF6B1A;
+    --teal:#1FA8A0;
+    --yellow:#F2C94C;
+    --soot:#2B2B26;
+    --dim:#7C7A6A;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; width:100%; height:100%; background:var(--iron); color:#D8D4C4;
+    font-family:'IBM Plex Mono',monospace; overflow:hidden; }
+  .disp{ font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:0.1em; }
+  #app{ position:fixed; inset:0; display:grid; grid-template-columns:200px 1fr; grid-template-rows:46px 1fr 118px; gap:1px; background:var(--soot); padding:1px; }
+  .panel{ background:var(--panel); position:relative; overflow:hidden; }
+
+  #topbar{ grid-column:1/span 2; display:flex; align-items:center; justify-content:space-between; padding:0 18px;
+    background:linear-gradient(180deg,#15170F,#0E100A); border-bottom:1px solid var(--soot); }
+  #topbar .id{ font-family:'Oswald',sans-serif; font-weight:700; font-size:19px; letter-spacing:0.16em; color:var(--orange); }
+  #topbar .sub{ font-size:11px; color:var(--dim); letter-spacing:0.1em; margin-left:10px; }
+  #topbar .mode{ font-size:11px; display:flex; align-items:center; gap:8px; }
+  #topbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--dim); }
+  #topbar .dot.live{ background:var(--teal); box-shadow:0 0 6px var(--teal); }
+  #topbar .dot.synth{ background:var(--orange); box-shadow:0 0 6px var(--orange); }
+
+  /* left gauge cluster */
+  #gauges{ grid-column:1; grid-row:2; display:flex; flex-direction:column; }
+  #gauges canvas{ display:block; width:100%; flex:1; }
+  /* central containment */
+  #core{ grid-column:2; grid-row:2; }
+  #core canvas{ display:block; width:100%; height:100%; }
+  #core .vp-label{ position:absolute; top:12px; left:16px; font-size:11px; color:var(--dim); letter-spacing:0.15em; z-index:2; }
+  #core .vp-label b{ color:var(--orange); }
+  #core .breach-flag{ position:absolute; top:12px; right:16px; font-size:11px; color:var(--orange); letter-spacing:0.15em; z-index:2; opacity:0; }
+
+  /* bottom: thermal spectrograph + telemetry log */
+  #bottom{ grid-column:1/span 2; grid-row:3; display:grid; grid-template-columns:1fr 320px; gap:1px; background:var(--soot); }
+  #thermal{ background:var(--panel); position:relative; }
+  #thermal canvas{ display:block; width:100%; height:100%; }
+  #thermal .vp-label{ position:absolute; top:8px; left:14px; font-size:10px; color:var(--dim); letter-spacing:0.15em; z-index:2;}
+  #log{ background:var(--panel); padding:8px 12px; overflow:hidden; font-size:10px; line-height:1.55; color:var(--dim); }
+  #log .vp-label{ font-size:10px; color:var(--dim); letter-spacing:0.15em; margin-bottom:5px; }
+  #log .row b{ color:var(--teal); }
+  #log .row.warn b{ color:var(--yellow); }
+  #log .row.crit b{ color:var(--orange); }
+
+  #controls{ position:absolute; bottom:0; right:0; }
+  .float-controls{ position:fixed; top:54px; right:14px; z-index:6; background:rgba(12,15,10,0.85); border:1px solid var(--soot); padding:10px 12px; display:flex; flex-direction:column; gap:8px; min-width:186px; }
+  .toggle-row{ display:flex; align-items:center; justify-content:space-between; font-size:10px; letter-spacing:0.08em; color:var(--dim); }
+  .toggle-row label{ font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:0.1em; }
+  .switch{ width:34px; height:16px; background:var(--iron); border:1px solid var(--soot); position:relative; cursor:pointer; flex:none; }
+  .switch .knob{ position:absolute; top:1px; left:1px; width:12px; height:12px; background:var(--dim); transition:all .15s ease; }
+  .switch.on{ border-color:var(--teal); }
+  .switch.on .knob{ left:19px; background:var(--teal); box-shadow:0 0 5px var(--teal); }
+
+  #boot-overlay{ position:fixed; inset:0; background:var(--iron); z-index:50; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+  #boot-overlay .title{ font-family:'Oswald',sans-serif; font-weight:700; color:var(--orange); font-size:24px; letter-spacing:0.18em; }
+  #boot-overlay p{ color:var(--dim); font-size:12px; letter-spacing:0.06em; max-width:380px; text-align:center; line-height:1.6; }
+  #boot-btn{ font-family:'Oswald',sans-serif; font-weight:700; font-size:18px; letter-spacing:0.14em; text-transform:uppercase; background:transparent; border:1px solid var(--orange); color:var(--orange); padding:14px 34px; cursor:pointer; }
+  #boot-btn:hover{ background:var(--orange); color:var(--iron); }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="boot-overlay">
+  <div class="title">Reactor Containment</div>
+  <p>Engineering core telemetry. An audio start gesture is required to bring the containment field online. Low-frequency energy drives the plasma displacement — headphones recommended.</p>
+  <button id="boot-btn">Bring Online</button>
+</div>
+
+<div id="app">
+  <div id="topbar" class="panel">
+    <div style="display:flex;align-items:baseline;">
+      <span class="id">Reactor</span><span class="sub">ENG-CORE · CONTAINMENT FIELD</span>
+    </div>
+    <div class="mode"><span id="mode-dot" class="dot"></span><span id="mode-text">STANDBY</span></div>
+  </div>
+  <div id="gauges" class="panel"></div>
+  <div id="core" class="panel">
+    <div class="vp-label">PLASMA CONTAINMENT &nbsp;<b>·</b>&nbsp; TORUS FIELD</div>
+    <div class="breach-flag disp" id="breach-flag">⚠ BREACH LOCUS</div>
+  </div>
+  <div id="bottom">
+    <div id="thermal" class="panel"><div class="vp-label">THERMAL SPECTRUM</div></div>
+    <div id="log" class="panel"><div class="vp-label">TELEMETRY LOG</div><div id="log-rows"></div></div>
+  </div>
+</div>
+
+<div class="float-controls">
+  <div class="toggle-row"><label>Breach Locus (3D)</label><div class="switch on" id="toggle-spatial"><div class="knob"></div></div></div>
+  <div class="toggle-row"><label>Alarm Klaxons</label><div class="switch on" id="toggle-standard"><div class="knob"></div></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../shared/audio-engine.js"></script>
+<script>
+(function(){
+  'use strict';
+  const engine = new ShipAudioEngine({ fftSize: 2048, smoothing: 0.7 });
+  let spatialEnabled=true, standardEnabled=true;
+  document.getElementById('toggle-spatial').addEventListener('click', function(){ spatialEnabled=!spatialEnabled; this.classList.toggle('on',spatialEnabled); });
+  document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
+
+  document.getElementById('boot-btn').addEventListener('click', async function(){
+    this.disabled=true; this.textContent='Spooling…';
+    const mode = await engine.start();
+    document.getElementById('boot-overlay').classList.add('hidden');
+    const dot=document.getElementById('mode-dot'), txt=document.getElementById('mode-text');
+    if(mode==='mic'){ dot.classList.add('live'); txt.textContent='LIVE MIC'; } else { dot.classList.add('synth'); txt.textContent='SYNTH FEED'; }
+    startAll();
+  });
+
+  // ---------- Three.js containment core ----------
+  const coreEl = document.getElementById('core');
+  const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+  coreEl.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(48,1,0.1,100); camera.position.set(0,2,8); camera.lookAt(0,0,0);
+  scene.add(new THREE.AmbientLight(0x223330,1.1));
+  const key = new THREE.PointLight(0xFF6B1A,1.6,40); key.position.set(3,4,5); scene.add(key);
+  const rim = new THREE.PointLight(0x1FA8A0,1.1,40); rim.position.set(-4,-2,3); scene.add(rim);
+
+  const torusGeo = new THREE.TorusKnotGeometry(2.0, 0.55, 160, 20, 2, 3);
+  const basePos = torusGeo.attributes.position.array.slice();
+  const baseNorm = torusGeo.attributes.normal.array.slice();
+  const torusMat = new THREE.MeshStandardMaterial({ color:0xFF6B1A, emissive:0x3a1400, emissiveIntensity:1, metalness:0.3, roughness:0.4, wireframe:true });
+  const torus = new THREE.Mesh(torusGeo, torusMat); scene.add(torus);
+  // inner containment shell
+  const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.2,1), new THREE.MeshBasicMaterial({ color:0x1FA8A0, wireframe:true, transparent:true, opacity:0.2 }));
+  scene.add(shell);
+
+  // spark particles for bass transients
+  const SPARKS=140;
+  const sparkGeo = new THREE.BufferGeometry();
+  const sparkPos = new Float32Array(SPARKS*3);
+  const sparkVel = [];
+  for(let i=0;i<SPARKS;i++){ sparkPos[i*3]=0;sparkPos[i*3+1]=0;sparkPos[i*3+2]=0; sparkVel.push(new THREE.Vector3()); }
+  sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos,3));
+  const sparks = new THREE.Points(sparkGeo, new THREE.PointsMaterial({ color:0xF2C94C, size:0.09, transparent:true, opacity:0.9 }));
+  scene.add(sparks);
+  let sparkLife = new Float32Array(SPARKS);
+
+  function resizeCore(){ const w=coreEl.clientWidth,h=coreEl.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/Math.max(h,1); camera.updateProjectionMatrix(); }
+  window.addEventListener('resize', resizeCore);
+
+  // ---------- Left gauges (canvas) ----------
+  const gEl = document.getElementById('gauges');
+  const gCanvas = document.createElement('canvas'); gEl.appendChild(gCanvas); const gCtx = gCanvas.getContext('2d');
+  function resizeGauges(){ gCanvas.width=gEl.clientWidth; gCanvas.height=gEl.clientHeight; }
+  window.addEventListener('resize', resizeGauges);
+  const gaugeDefs = [ {label:'TEMP', color:'#FF6B1A'}, {label:'PRESS', color:'#F2C94C'}, {label:'FLUX', color:'#1FA8A0'} ];
+  function drawGauges(vals){
+    const w=gCanvas.width,h=gCanvas.height; if(!w||!h) return;
+    gCtx.clearRect(0,0,w,h);
+    const cellH=h/gaugeDefs.length, cx=w/2, r=Math.min(w*0.34, cellH*0.32);
+    gaugeDefs.forEach((g,i)=>{
+      const cy=cellH*(i+0.42); const v=vals[i];
+      gCtx.strokeStyle='#2B2B26'; gCtx.lineWidth=6; gCtx.beginPath(); gCtx.arc(cx,cy,r,Math.PI*0.75,Math.PI*2.25); gCtx.stroke();
+      gCtx.strokeStyle=g.color; gCtx.beginPath(); gCtx.arc(cx,cy,r,Math.PI*0.75,Math.PI*0.75+v*Math.PI*1.5); gCtx.stroke();
+      // needle
+      const ang=Math.PI*0.75+v*Math.PI*1.5;
+      gCtx.strokeStyle=g.color; gCtx.lineWidth=2; gCtx.beginPath(); gCtx.moveTo(cx,cy); gCtx.lineTo(cx+Math.cos(ang)*r*0.9, cy+Math.sin(ang)*r*0.9); gCtx.stroke();
+      gCtx.fillStyle=g.color; gCtx.font='700 12px Oswald, sans-serif'; gCtx.textAlign='center';
+      gCtx.fillText((v*100).toFixed(0), cx, cy+4);
+      gCtx.fillStyle='#7C7A6A'; gCtx.font='10px "IBM Plex Mono", monospace'; gCtx.fillText(g.label, cx, cy+r+14);
+    });
+  }
+
+  // ---------- Thermal spectrograph ----------
+  const thEl = document.getElementById('thermal');
+  const thCanvas = document.createElement('canvas'); thEl.appendChild(thCanvas); const thCtx = thCanvas.getContext('2d');
+  function resizeThermal(){ thCanvas.width=thEl.clientWidth; thCanvas.height=thEl.clientHeight; }
+  window.addEventListener('resize', resizeThermal);
+  function thermalColor(v){ // blue/teal -> yellow -> orange
+    if(v<0.4){ const k=v/0.4; return `rgb(${31*k|0},${120+40*k|0},${160-40*k|0})`; }
+    if(v<0.75){ const k=(v-0.4)/0.35; return `rgb(${31+210*k|0},${160+41*k|0},${120-90*k|0})`; }
+    const k=(v-0.75)/0.25; return `rgb(${241+14*k|0},${201-94*k|0},${30-4*k|0})`;
+  }
+  function drawThermal(freq){
+    const w=thCanvas.width,h=thCanvas.height; if(!w||!h) return;
+    const img=thCtx.getImageData(1,0,w-1,h); thCtx.putImageData(img,0,0);
+    const n=freq.length;
+    for(let y=0;y<h;y++){ const idx=Math.floor((1-y/h)*n*0.6); const v=freq[idx]/255; thCtx.fillStyle=thermalColor(v); thCtx.fillRect(w-1,y,1,1); }
+  }
+
+  // ---------- Telemetry log ----------
+  const logRows=document.getElementById('log-rows'); const logBuf=[];
+  const LOG_MSGS=['coolant loop nominal','flux stabilizer engaged','plasma density within band','magnetic bottle holding','neutron flux sampled','containment ring aligned'];
+  function pushLog(msg, cls){ const ts=new Date().toISOString().substr(11,8); logBuf.unshift(`<div class="row ${cls||''}"><b>${ts}</b> ${msg}</div>`); if(logBuf.length>9) logBuf.pop(); logRows.innerHTML=logBuf.join(''); }
+  setInterval(()=>{ if(running) pushLog(LOG_MSGS[Math.floor(Math.random()*LOG_MSGS.length)]); }, 2600);
+
+  // ---------- Loop ----------
+  let running=false, breachVoice=null, lastKlaxon=0, prevBass=0;
+  const tVals=[0,0,0];
+  function startAll(){ resizeCore(); resizeGauges(); resizeThermal(); running=true; pushLog('reactor online','warn'); requestAnimationFrame(loop); }
+
+  function loop(t){
+    if(!running) return; requestAnimationFrame(loop);
+    const time=t*0.001;
+    const freq=engine.getFrequencyData(); const level=engine.getLevel();
+    // bass band 0..~12 bins
+    let bass=0; for(let b=0;b<12;b++) bass+=freq[b]; bass/=(12*255);
+    let mid=0; for(let b=40;b<160;b++) mid+=freq[b]; mid/=(120*255);
+    let high=0; for(let b=300;b<600;b++) high+=freq[b]; high/=(300*255);
+
+    // signature: per-vertex displacement of torus by bass
+    const pos=torus.geometry.attributes.position.array;
+    for(let i=0;i<pos.length;i+=3){
+      const bx=basePos[i],by=basePos[i+1],bz=basePos[i+2];
+      const nx=baseNorm[i],ny=baseNorm[i+1],nz=baseNorm[i+2];
+      const wobble=Math.sin(bx*2+time*3)+Math.cos(by*2.3-time*2.4)+Math.sin(bz*1.7+time*2.1);
+      const d=wobble*0.12*bass*3;
+      pos[i]=bx+nx*d; pos[i+1]=by+ny*d; pos[i+2]=bz+nz*d;
+    }
+    torus.geometry.attributes.position.needsUpdate=true;
+    torus.rotation.y+=0.004; torus.rotation.x+=0.0015;
+    torusMat.emissiveIntensity=0.6+bass*3;
+    shell.rotation.y-=0.006; shell.scale.setScalar(1+bass*0.6);
+
+    // bass transient -> spark burst
+    const sp=sparks.geometry.attributes.position.array;
+    if(bass-prevBass>0.14){ for(let i=0;i<SPARKS;i++){ if(sparkLife[i]<=0){ sparkVel[i].set((Math.random()-0.5),(Math.random()-0.5),(Math.random()-0.5)).multiplyScalar(0.08); sp[i*3]=0;sp[i*3+1]=0;sp[i*3+2]=0; sparkLife[i]=1; } } }
+    prevBass=bass;
+    for(let i=0;i<SPARKS;i++){ if(sparkLife[i]>0){ sp[i*3]+=sparkVel[i].x; sp[i*3+1]+=sparkVel[i].y; sp[i*3+2]+=sparkVel[i].z; sparkLife[i]-=0.02; } }
+    sparks.geometry.attributes.position.needsUpdate=true;
+    sparks.material.opacity=0.9;
+
+    // gauges (smoothed)
+    const targets=[0.3+bass*0.8, 0.4+mid*0.7, 0.35+high*0.9];
+    for(let i=0;i<3;i++) tVals[i]+=(Math.min(1,targets[i])-tVals[i])*0.1;
+    drawGauges(tVals);
+    drawThermal(freq);
+
+    // threshold breach -> klaxon + breach locus voice
+    const breach = tVals[1] > 0.85; // pressure over limit
+    const flag=document.getElementById('breach-flag');
+    flag.style.opacity = breach ? (0.5+Math.sin(time*8)*0.5) : 0;
+    if(breach){
+      if(standardEnabled && time-lastKlaxon>1.1){ lastKlaxon=time; engine.pingStandard({freq:120,pan:-0.3,duration:0.4,type:'square',gain:0.32}); engine.pingStandard({freq:90,pan:0.3,duration:0.5,type:'sawtooth',gain:0.28}); pushLog('PRESSURE LIMIT EXCEEDED','crit'); }
+      if(spatialEnabled){ if(!breachVoice){ breachVoice=engine.createSpatialVoice({freq:70,type:'sawtooth'}); const a=Math.random()*Math.PI*2; breachVoice.setPosition(Math.cos(a)*4,0,Math.sin(a)*4); } breachVoice.setGain(0.4); }
+    } else if(breachVoice){ breachVoice.stop(); breachVoice=null; }
+
+    renderer.render(scene,camera);
+  }
+})();
+</script>
+</body>
+</html>

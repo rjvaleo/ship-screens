@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LIFE SUPPORT // ATMOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#071410;
+    --oxygen:#7FD858;
+    --coral:#FF8566;
+    --blue:#6FB7C9;
+    --bone:#E9E4D8;
+    --dim:#5E7A6E;
+    --line:#12241D;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; width:100%; height:100%; background:var(--void); color:var(--bone);
+    font-family:'Fira Code',monospace; overflow:hidden; }
+  .disp{ font-family:'Manrope',sans-serif; font-weight:600; letter-spacing:0.04em; }
+  #viewport{ position:fixed; inset:0; }
+  #viewport canvas{ display:block; width:100%; height:100%; }
+
+  #topbar{ position:fixed; top:0; left:0; right:0; height:44px; z-index:5; display:flex; align-items:center; justify-content:space-between; padding:0 20px;
+    background:linear-gradient(180deg, rgba(7,20,16,0.94), rgba(7,20,16,0.3)); border-bottom:1px solid var(--line); }
+  #topbar .id{ font-family:'Manrope',sans-serif; font-weight:700; font-size:17px; letter-spacing:0.08em; color:var(--oxygen); }
+  #topbar .sub{ font-size:11px; color:var(--dim); letter-spacing:0.1em; margin-left:10px; }
+  #topbar .mode{ font-size:11px; display:flex; align-items:center; gap:8px; color:var(--dim); }
+  #topbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--dim); }
+  #topbar .dot.live{ background:var(--oxygen); box-shadow:0 0 6px var(--oxygen); }
+  #topbar .dot.synth{ background:var(--blue); box-shadow:0 0 6px var(--blue); }
+
+  /* zone readouts arranged in a ring */
+  #zones{ position:fixed; inset:0; z-index:4; pointer-events:none; }
+  .zone{ position:absolute; width:132px; transform:translate(-50%,-50%); text-align:center; }
+  .zone .name{ font-family:'Manrope',sans-serif; font-weight:600; font-size:11px; letter-spacing:0.1em; color:var(--bone); }
+  .zone .grid{ display:grid; grid-template-columns:1fr 1fr; gap:2px 8px; margin-top:4px; font-size:10px; color:var(--dim); }
+  .zone .grid b{ color:var(--blue); font-weight:500; }
+  .zone.alarm .name{ color:var(--coral); }
+  .zone.alarm .grid b{ color:var(--coral); }
+
+  #spectral{ position:fixed; left:0; right:0; bottom:0; height:96px; z-index:4; }
+  #spectral canvas{ display:block; width:100%; height:100%; }
+  #spectral .lbl{ position:absolute; top:8px; left:16px; font-size:10px; color:var(--dim); letter-spacing:0.15em; }
+
+  #breath{ position:fixed; bottom:104px; left:50%; transform:translateX(-50%); z-index:4; font-size:10px; color:var(--dim); letter-spacing:0.2em; }
+  #breath b{ color:var(--oxygen); }
+
+  .float-controls{ position:fixed; top:52px; right:14px; z-index:6; background:rgba(7,20,16,0.85); border:1px solid var(--line); padding:10px 12px; display:flex; flex-direction:column; gap:8px; min-width:196px; }
+  .toggle-row{ display:flex; align-items:center; justify-content:space-between; font-size:10px; letter-spacing:0.06em; color:var(--dim); }
+  .toggle-row label{ font-family:'Manrope',sans-serif; font-weight:600; letter-spacing:0.06em; }
+  .switch{ width:34px; height:16px; background:var(--void); border:1px solid var(--line); position:relative; cursor:pointer; flex:none; }
+  .switch .knob{ position:absolute; top:1px; left:1px; width:12px; height:12px; background:var(--dim); transition:all .15s ease; }
+  .switch.on{ border-color:var(--oxygen); }
+  .switch.on .knob{ left:19px; background:var(--oxygen); box-shadow:0 0 5px var(--oxygen); }
+
+  #boot-overlay{ position:fixed; inset:0; background:var(--void); z-index:50; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+  #boot-overlay .title{ font-family:'Manrope',sans-serif; font-weight:700; color:var(--oxygen); font-size:22px; letter-spacing:0.08em; }
+  #boot-overlay p{ color:var(--dim); font-size:12px; letter-spacing:0.04em; max-width:380px; text-align:center; line-height:1.6; }
+  #boot-btn{ font-family:'Manrope',sans-serif; font-weight:700; font-size:16px; letter-spacing:0.1em; background:transparent; border:1px solid var(--oxygen); color:var(--oxygen); padding:14px 34px; cursor:pointer; }
+  #boot-btn:hover{ background:var(--oxygen); color:var(--void); }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="boot-overlay">
+  <div class="title">Life Support</div>
+  <p>Atmospherics &amp; environmental systems. An audio start gesture is required to bring the deck plan online. The deck ring breathes on a fixed respiration rhythm, independent of audio.</p>
+  <button id="boot-btn">Bring Online</button>
+</div>
+
+<div id="viewport"></div>
+
+<div id="topbar">
+  <div style="display:flex;align-items:baseline;"><span class="id">Life Support</span><span class="sub">ENV-ATMOS · DECK PLAN</span></div>
+  <div class="mode"><span id="mode-dot" class="dot"></span><span id="mode-text">STANDBY</span></div>
+</div>
+
+<div id="zones"></div>
+<div id="breath">RESPIRATION <b id="breath-rate">14</b> / MIN</div>
+
+<div id="spectral"><div class="lbl">ATMOSPHERIC SPECTRUM</div></div>
+
+<div class="float-controls">
+  <div class="toggle-row"><label>Zone Alarm (3D)</label><div class="switch on" id="toggle-spatial"><div class="knob"></div></div></div>
+  <div class="toggle-row"><label>Alarm Chime</label><div class="switch on" id="toggle-standard"><div class="knob"></div></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../shared/audio-engine.js"></script>
+<script>
+(function(){
+  'use strict';
+  const engine = new ShipAudioEngine({ fftSize: 2048, smoothing: 0.85 });
+  let spatialEnabled=true, standardEnabled=true;
+  document.getElementById('toggle-spatial').addEventListener('click', function(){ spatialEnabled=!spatialEnabled; this.classList.toggle('on',spatialEnabled); });
+  document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
+  document.getElementById('boot-btn').addEventListener('click', async function(){
+    this.disabled=true; this.textContent='Priming…';
+    const mode=await engine.start();
+    document.getElementById('boot-overlay').classList.add('hidden');
+    const dot=document.getElementById('mode-dot'), txt=document.getElementById('mode-text');
+    if(mode==='mic'){ dot.classList.add('live'); txt.textContent='LIVE MIC'; } else { dot.classList.add('synth'); txt.textContent='SYNTH FEED'; }
+    startAll();
+  });
+
+  // ---------- Three.js deck plan ----------
+  const vpEl=document.getElementById('viewport');
+  const renderer=new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+  vpEl.appendChild(renderer.domElement);
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(46,1,0.1,100); camera.position.set(0,9,3.2); camera.lookAt(0,0,0);
+  scene.add(new THREE.AmbientLight(0x2a4a3e,1.4));
+  const key=new THREE.PointLight(0x7FD858,0.9,40); key.position.set(0,8,0); scene.add(key);
+
+  const assembly=new THREE.Group(); scene.add(assembly);
+  // stacked translucent deck rings
+  const DECKS=4; const deckRings=[];
+  for(let d=0; d<DECKS; d++){
+    const r=1.6+d*0.9;
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(r,0.05,10,80), new THREE.MeshBasicMaterial({ color:0x6FB7C9, transparent:true, opacity:0.5-d*0.06 }));
+    ring.rotation.x=Math.PI/2; ring.position.y=d*0.35-0.5; assembly.add(ring);
+    const disc=new THREE.Mesh(new THREE.CircleGeometry(r,64), new THREE.MeshBasicMaterial({ color:0x0E3028, transparent:true, opacity:0.12, side:THREE.DoubleSide }));
+    disc.rotation.x=Math.PI/2; disc.position.y=d*0.35-0.5; assembly.add(disc);
+    deckRings.push(ring);
+  }
+
+  // zones around the outer deck
+  const ZONE_NAMES=['FWD','STBD-FWD','STBD-AFT','AFT','PORT-AFT','PORT-FWD'];
+  const ZONE_COUNT=ZONE_NAMES.length;
+  const zones=[];
+  const zonesEl=document.getElementById('zones');
+  for(let i=0;i<ZONE_COUNT;i++){
+    const ang=i/ZONE_COUNT*Math.PI*2;
+    const r=4.3;
+    const marker=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.14,0.5,12), new THREE.MeshBasicMaterial({ color:0x7FD858 }));
+    marker.position.set(Math.cos(ang)*r, 0.3, Math.sin(ang)*r); assembly.add(marker);
+    // DOM readout card
+    const card=document.createElement('div'); card.className='zone';
+    card.innerHTML=`<div class="name">${ZONE_NAMES[i]}</div><div class="grid"><span>O₂ <b class="o2">21.0</b></span><span>CO₂ <b class="co2">0.04</b></span><span>°C <b class="temp">21</b></span><span>RH <b class="rh">44</b></span></div>`;
+    zonesEl.appendChild(card);
+    zones.push({ name:ZONE_NAMES[i], ang, marker, card, binLo:Math.floor(30+i*70), binHi:Math.floor(30+(i+1)*70),
+      o2:21, co2:0.04, temp:21, rh:44, quality:1, voice:null, lastChime:0, alarm:false });
+  }
+
+  function layoutZones(){
+    const cx=window.innerWidth/2, cy=window.innerHeight/2, R=Math.min(cx,cy)*0.62;
+    zones.forEach((z,i)=>{ const a=z.ang - Math.PI/2; z.card.style.left=(cx+Math.cos(a)*R)+'px'; z.card.style.top=(cy+Math.sin(a)*R)+'px'; });
+  }
+  function resize(){ const w=vpEl.clientWidth,h=vpEl.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/Math.max(h,1); camera.updateProjectionMatrix(); layoutZones(); resizeSpectral(); }
+  window.addEventListener('resize', resize);
+
+  // ---------- smoothed area spectrograph ----------
+  const specEl=document.getElementById('spectral');
+  const specCanvas=document.createElement('canvas'); specEl.appendChild(specCanvas); const specCtx=specCanvas.getContext('2d');
+  function resizeSpectral(){ specCanvas.width=specEl.clientWidth; specCanvas.height=specEl.clientHeight; }
+  const specSmooth=new Float32Array(128);
+  function drawSpectral(freq){
+    const w=specCanvas.width,h=specCanvas.height; if(!w||!h) return;
+    specCtx.clearRect(0,0,w,h);
+    const N=128;
+    const grad=specCtx.createLinearGradient(0,0,0,h);
+    grad.addColorStop(0,'rgba(127,216,88,0.55)'); grad.addColorStop(1,'rgba(111,183,201,0.05)');
+    specCtx.fillStyle=grad; specCtx.beginPath(); specCtx.moveTo(0,h);
+    for(let i=0;i<N;i++){ const idx=Math.floor(i/N*freq.length*0.6); const v=freq[idx]/255; specSmooth[i]+=(v-specSmooth[i])*0.15; const x=i/(N-1)*w; const y=h-specSmooth[i]*h*0.9; specCtx.lineTo(x,y); }
+    specCtx.lineTo(w,h); specCtx.closePath(); specCtx.fill();
+    specCtx.strokeStyle='rgba(127,216,88,0.7)'; specCtx.lineWidth=1.5; specCtx.beginPath();
+    for(let i=0;i<N;i++){ const x=i/(N-1)*w; const y=h-specSmooth[i]*h*0.9; if(i===0)specCtx.moveTo(x,y); else specCtx.lineTo(x,y); }
+    specCtx.stroke();
+  }
+
+  // ---------- loop ----------
+  let running=false;
+  const RESP_HZ=14/60; // 14 breaths / minute, audio-independent
+  function startAll(){ resize(); running=true; requestAnimationFrame(loop); }
+
+  const _v=new THREE.Vector3();
+  function loop(t){
+    if(!running) return; requestAnimationFrame(loop);
+    const time=t*0.001;
+    const freq=engine.getFrequencyData();
+
+    // signature: whole ring breathes, independent of audio
+    const breath=1 + Math.sin(time*Math.PI*2*RESP_HZ)*0.05;
+    assembly.scale.set(breath,1,breath);
+    deckRings.forEach((r,d)=>{ r.rotation.z += (d%2?0.0018:-0.0014); });
+
+    // zones drift, occasionally out of safe range
+    zones.forEach((z,i)=>{
+      let s=0,c=0; for(let b=z.binLo;b<z.binHi;b++){ s+=freq[b]; c++; } const amp=c?s/c/255:0;
+      // slow simulated drift, nudged by audio energy
+      z.co2 += (0.04 + amp*0.09 - z.co2)*0.02 + (Math.random()-0.5)*0.001;
+      z.o2  += (21 - amp*3.5 - z.o2)*0.02;
+      z.temp+= (21 + amp*6 - z.temp)*0.02;
+      z.rh  += (44 + Math.sin(time*0.2+i)*6 - z.rh)*0.02;
+      const bad = z.co2>0.11 || z.o2<18.5;
+      z.quality += ((bad?0:1)-z.quality)*0.08;
+      z.marker.material.color.setHex(bad ? 0xFF8566 : 0x7FD858);
+      z.marker.scale.y = 1 + (bad?Math.abs(Math.sin(time*5))*0.6:0);
+      z.card.classList.toggle('alarm', bad);
+      z.card.querySelector('.o2').textContent=z.o2.toFixed(1);
+      z.card.querySelector('.co2').textContent=z.co2.toFixed(2);
+      z.card.querySelector('.temp').textContent=z.temp.toFixed(0);
+      z.card.querySelector('.rh').textContent=z.rh.toFixed(0);
+
+      if(bad){
+        if(spatialEnabled){ if(!z.voice){ z.voice=engine.createSpatialVoice({ freq:520, type:'sine' }); _v.set(Math.cos(z.ang)*4,0.3,Math.sin(z.ang)*4); z.voice.setPosition(_v.x,_v.y,_v.z); } z.voice.setGain(0.25+Math.abs(Math.sin(time*4))*0.15); }
+        if(standardEnabled && time-z.lastChime>2.4){ z.lastChime=time; engine.pingStandard({ freq:660, pan:Math.cos(z.ang), duration:0.5, type:'sine', gain:0.28 }); }
+      } else if(z.voice){ z.voice.stop(); z.voice=null; }
+    });
+
+    drawSpectral(freq);
+    renderer.render(scene,camera);
+  }
+})();
+</script>
+</body>
+</html>

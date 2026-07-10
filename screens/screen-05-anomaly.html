@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ANOMALY // XENOSCAN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#0A0714;
+    --green:#6EFFB2;
+    --magenta:#FF2E9A;
+    --white:#E8E8F0;
+    --violet:#7A4FE0;
+    --line:#211a34;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; width:100%; height:100%; background:var(--void); color:var(--white);
+    font-family:'Space Mono',monospace; overflow:hidden; }
+  .mono{ font-family:'Major Mono Display', monospace; text-transform:lowercase; }
+  #app{ position:fixed; inset:0; display:grid;
+    grid-template-columns: 1fr 236px; grid-template-rows: 44px 1fr; gap:1px; background:var(--line); padding:1px; }
+  .panel{ background:#0D0A1A; position:relative; overflow:hidden; transition:transform .18s ease; }
+
+  #topbar{ grid-column:1/span 2; display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:linear-gradient(180deg,#120C22,#0B0816); border-bottom:1px solid var(--line); }
+  #topbar .id{ font-family:'Major Mono Display',monospace; font-size:18px; letter-spacing:0.1em; color:var(--green); }
+  #topbar .sub{ font-size:11px; color:var(--violet); letter-spacing:0.14em; margin-left:12px; }
+  #topbar .mode{ font-size:11px; display:flex; align-items:center; gap:8px; color:var(--violet); }
+  #topbar .dot{ width:7px; height:7px; border-radius:50%; background:var(--violet); }
+  #topbar .dot.live{ background:var(--green); box-shadow:0 0 6px var(--green); }
+  #topbar .dot.synth{ background:var(--magenta); box-shadow:0 0 6px var(--magenta); }
+
+  #viewport{ grid-column:1; grid-row:2; }
+  #viewport canvas{ display:block; width:100%; height:100%; position:absolute; inset:0; }
+  #gl-canvas{ visibility:hidden; }
+  #viewport .vp-label{ position:absolute; top:12px; left:16px; font-size:11px; color:var(--violet); letter-spacing:0.16em; z-index:3; }
+  #viewport .vp-label b{ color:var(--green); }
+  #anom-flag{ position:absolute; top:12px; right:16px; z-index:3; font-family:'Major Mono Display',monospace; font-size:12px; color:var(--magenta); opacity:0; }
+
+  #readouts{ grid-column:2; grid-row:2; padding:16px 14px; }
+  #readouts h2{ margin:0 0 14px; font-family:'Major Mono Display',monospace; font-size:12px; letter-spacing:0.06em; color:var(--green); }
+  .ro{ margin-bottom:14px; }
+  .ro .k{ font-size:10px; color:var(--violet); letter-spacing:0.12em; }
+  .ro .v{ font-size:20px; color:var(--white); letter-spacing:0.04em; }
+  .ro .v.err{ color:var(--magenta); }
+  .ro .bar{ height:3px; margin-top:4px; background:var(--line); }
+  .ro .bar span{ display:block; height:100%; background:var(--green); }
+
+  .float-controls{ position:fixed; bottom:14px; right:14px; z-index:6; background:rgba(10,7,20,0.85); border:1px solid var(--line); padding:10px 12px; display:flex; flex-direction:column; gap:8px; min-width:200px; }
+  .toggle-row{ display:flex; align-items:center; justify-content:space-between; font-size:10px; letter-spacing:0.08em; color:var(--violet); }
+  .toggle-row label{ font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:0.08em; }
+  .switch{ width:34px; height:16px; background:var(--void); border:1px solid var(--line); position:relative; cursor:pointer; flex:none; }
+  .switch .knob{ position:absolute; top:1px; left:1px; width:12px; height:12px; background:var(--violet); transition:all .15s ease; }
+  .switch.on{ border-color:var(--green); }
+  .switch.on .knob{ left:19px; background:var(--green); box-shadow:0 0 5px var(--green); }
+
+  #boot-overlay{ position:fixed; inset:0; background:var(--void); z-index:50; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
+  #boot-overlay .title{ font-family:'Major Mono Display',monospace; color:var(--green); font-size:24px; letter-spacing:0.06em; }
+  #boot-overlay p{ color:var(--violet); font-size:12px; letter-spacing:0.06em; max-width:380px; text-align:center; line-height:1.6; }
+  #boot-btn{ font-family:'Major Mono Display',monospace; font-size:17px; letter-spacing:0.06em; text-transform:lowercase; background:transparent; border:1px solid var(--green); color:var(--green); padding:14px 34px; cursor:pointer; }
+  #boot-btn:hover{ background:var(--green); color:var(--void); }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="boot-overlay">
+  <div class="title">anomaly scan</div>
+  <p>Xenoscience anomaly detection. An audio start gesture is required to begin the scan. Detected transients trigger localized spatial contacts and visual artifacts.</p>
+  <button id="boot-btn">begin scan</button>
+</div>
+
+<div id="app">
+  <div id="topbar" class="panel">
+    <div style="display:flex;align-items:baseline;"><span class="id">anomaly</span><span class="sub">XENO-SCAN · SECTOR UNRESOLVED</span></div>
+    <div class="mode"><span id="mode-dot" class="dot"></span><span id="mode-text">STANDBY</span></div>
+  </div>
+  <div id="viewport" class="panel">
+    <canvas id="gl-canvas"></canvas>
+    <canvas id="fx-canvas"></canvas>
+    <div class="vp-label">POINT-CLOUD FIELD &nbsp;<b>·</b>&nbsp; DISTORTION MAP</div>
+    <div id="anom-flag" class="mono">! anomaly</div>
+  </div>
+  <div id="readouts" class="panel">
+    <h2>confidence</h2>
+    <div class="ro"><div class="k">COHERENCE</div><div class="v" id="ro-coh">0.00</div><div class="bar"><span id="bar-coh"></span></div></div>
+    <div class="ro"><div class="k">SIGNAL PROB</div><div class="v" id="ro-prob">0.00</div><div class="bar"><span id="bar-prob"></span></div></div>
+    <div class="ro"><div class="k">ENTROPY</div><div class="v" id="ro-ent">0.00</div><div class="bar"><span id="bar-ent"></span></div></div>
+    <div class="ro"><div class="k">TRANSIENTS</div><div class="v" id="ro-tr">000</div></div>
+  </div>
+</div>
+
+<div class="float-controls">
+  <div class="toggle-row"><label>Ephemeral Contacts (3D)</label><div class="switch on" id="toggle-spatial"><div class="knob"></div></div></div>
+  <div class="toggle-row"><label>Sub-bass Rumble</label><div class="switch on" id="toggle-standard"><div class="knob"></div></div></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="../shared/audio-engine.js"></script>
+<script>
+(function(){
+  'use strict';
+  const engine = new ShipAudioEngine({ fftSize: 2048, smoothing: 0.6 });
+  let spatialEnabled=true, standardEnabled=true;
+  document.getElementById('toggle-spatial').addEventListener('click', function(){ spatialEnabled=!spatialEnabled; this.classList.toggle('on',spatialEnabled); });
+  document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
+  document.getElementById('boot-btn').addEventListener('click', async function(){
+    this.disabled=true; this.textContent='scanning…';
+    const mode=await engine.start();
+    document.getElementById('boot-overlay').classList.add('hidden');
+    const dot=document.getElementById('mode-dot'), txt=document.getElementById('mode-text');
+    if(mode==='mic'){ dot.classList.add('live'); txt.textContent='LIVE MIC'; } else { dot.classList.add('synth'); txt.textContent='SYNTH FEED'; }
+    startAll();
+  });
+
+  // ---------- Three.js point cloud ----------
+  const vpEl=document.getElementById('viewport');
+  const glCanvas=document.getElementById('gl-canvas');
+  // preserveDrawingBuffer: required so the 2D FX overlay can drawImage() this canvas
+  const renderer=new THREE.WebGLRenderer({ canvas:glCanvas, antialias:true, preserveDrawingBuffer:true });
+  renderer.setPixelRatio(1);
+  renderer.setClearColor(0x0A0714,1);
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(52,1,0.1,100); camera.position.set(0,0,6);
+
+  const ico=new THREE.IcosahedronGeometry(2.4, 4);
+  const basePos=ico.attributes.position.array.slice();
+  const cloud=new THREE.Points(ico, new THREE.PointsMaterial({ color:0x6EFFB2, size:0.045, transparent:true, opacity:0.95 }));
+  scene.add(cloud);
+  const wire=new THREE.Mesh(new THREE.IcosahedronGeometry(2.42,1), new THREE.MeshBasicMaterial({ color:0x7A4FE0, wireframe:true, transparent:true, opacity:0.12 }));
+  scene.add(wire);
+
+  // ---------- FX overlay (RGB split glitch) ----------
+  const fxCanvas=document.getElementById('fx-canvas'); const fxCtx=fxCanvas.getContext('2d');
+  const tmp=document.createElement('canvas'); const tmpCtx=tmp.getContext('2d');
+  function resize(){
+    const w=vpEl.clientWidth, h=vpEl.clientHeight;
+    renderer.setSize(w,h,false); camera.aspect=w/Math.max(h,1); camera.updateProjectionMatrix();
+    fxCanvas.width=w; fxCanvas.height=h; tmp.width=w; tmp.height=h;
+  }
+  window.addEventListener('resize', resize);
+
+  function tintBlit(color, dx){ // isolate one channel of the gl frame, draw shifted, additively
+    tmpCtx.globalCompositeOperation='source-over'; tmpCtx.clearRect(0,0,tmp.width,tmp.height);
+    tmpCtx.drawImage(glCanvas,0,0);
+    tmpCtx.globalCompositeOperation='multiply'; tmpCtx.fillStyle=color; tmpCtx.fillRect(0,0,tmp.width,tmp.height);
+    fxCtx.globalCompositeOperation='lighter'; fxCtx.drawImage(tmp,dx,0);
+  }
+  function drawFX(glitch){
+    const w=fxCanvas.width,h=fxCanvas.height; if(!w||!h) return;
+    fxCtx.globalCompositeOperation='source-over'; fxCtx.clearRect(0,0,w,h);
+    if(glitch>0.02){
+      const off=Math.round(glitch*10)+1;
+      tintBlit('#FF0000', -off); tintBlit('#00FF00', 0); tintBlit('#0000FF', off);
+      // scanline tear
+      fxCtx.globalCompositeOperation='source-over';
+      const ty=Math.random()*h, th=6+Math.random()*20;
+      fxCtx.drawImage(fxCanvas, 0,ty,w,th, Math.random()*30-15, ty, w, th);
+    } else {
+      fxCtx.drawImage(glCanvas,0,0);
+    }
+  }
+
+  // ---------- transient detection (in-screen, per CLAUDE.md) ----------
+  let prevFreq=null, fluxAvg=0, transientCount=0;
+  function detectTransient(freq){
+    if(!prevFreq){ prevFreq=new Float32Array(freq.length); }
+    let flux=0; for(let i=0;i<freq.length;i++){ const d=freq[i]-prevFreq[i]; if(d>0) flux+=d; prevFreq[i]=freq[i]; }
+    flux/=freq.length;
+    fluxAvg += (flux-fluxAvg)*0.05;
+    return flux > fluxAvg*1.9 + 3.5;
+  }
+
+  // ---------- readouts ----------
+  const smoothVals={coh:0,prob:0,ent:0};
+  function updateReadouts(freq, level){
+    let mid=0; for(let b=20;b<300;b++) mid+=freq[b]; mid/=(280*255);
+    const targets={ coh:0.4+level*2, prob:0.2+mid*1.4, ent:0.3+Math.random()*0.15+level };
+    for(const k in targets){ smoothVals[k]+=(Math.min(1,targets[k])-smoothVals[k])*0.08; }
+    const glitchNow=Math.random()<0.015;
+    setRo('coh', smoothVals.coh, glitchNow);
+    setRo('prob', smoothVals.prob, false);
+    setRo('ent', smoothVals.ent, Math.random()<0.01);
+    document.getElementById('ro-tr').textContent=String(transientCount%1000).padStart(3,'0');
+  }
+  function setRo(id, v, err){
+    const el=document.getElementById('ro-'+id), bar=document.getElementById('bar-'+id);
+    if(err){ el.textContent='ERR'; el.classList.add('err'); } else { el.textContent=v.toFixed(2); el.classList.remove('err'); }
+    if(bar) bar.style.width=(v*100).toFixed(0)+'%';
+  }
+
+  // ---------- layout jitter ----------
+  const panels=document.querySelectorAll('#viewport, #readouts');
+  setInterval(()=>{ if(!running) return; panels.forEach(p=>{ p.style.transform=`translate(${(Math.random()-0.5)*3}px, ${(Math.random()-0.5)*3}px)`; }); }, 1700);
+
+  // ---------- loop ----------
+  let running=false, glitch=0, distort=0;
+  function startAll(){ resize(); running=true; requestAnimationFrame(loop); }
+
+  function loop(t){
+    if(!running) return; requestAnimationFrame(loop);
+    const time=t*0.001;
+    const freq=engine.getFrequencyData(); const level=engine.getLevel();
+
+    const transient=detectTransient(freq);
+    if(transient){
+      transientCount++;
+      glitch=1; distort=1;
+      // ephemeral spatial contact: brief tone at random position, torn down
+      if(spatialEnabled){
+        const v=engine.createSpatialVoice({ freq:300+Math.random()*500, type:'triangle' });
+        v.setPosition((Math.random()-0.5)*8,(Math.random()-0.5)*5,(Math.random()-0.5)*4-2);
+        v.setGain(0.5);
+        setTimeout(()=>v.stop(0.1), 130);
+      }
+      // sparse sub-bass rumble (not every transient)
+      if(standardEnabled && Math.random()<0.35){ engine.pingStandard({ freq:42+Math.random()*20, pan:(Math.random()-0.5)*1.4, duration:0.8, type:'sine', gain:0.4 }); }
+    }
+    glitch*=0.86; distort*=0.90;
+    document.getElementById('anom-flag').style.opacity = glitch>0.3 ? 1 : 0;
+
+    // per-vertex noise displacement, amplitude from transient decay
+    const pos=cloud.geometry.attributes.position.array;
+    for(let i=0;i<pos.length;i+=3){
+      const bx=basePos[i],by=basePos[i+1],bz=basePos[i+2];
+      const n=Math.sin(bx*3+time*2)+Math.cos(by*2.6-time*1.7)+Math.sin(bz*3.3+time*2.4);
+      const d=1 + n*0.09*distort*2 + level*0.15;
+      pos[i]=bx*d; pos[i+1]=by*d; pos[i+2]=bz*d;
+    }
+    cloud.geometry.attributes.position.needsUpdate=true;
+    cloud.rotation.y+=0.0016; cloud.rotation.x+=0.0009; wire.rotation.y+=0.0016; wire.rotation.x+=0.0009;
+    cloud.material.color.setHex(glitch>0.4 ? 0xFF2E9A : 0x6EFFB2);
+
+    renderer.render(scene,camera);
+    drawFX(glitch);
+    updateReadouts(freq, level);
+  }
+})();
+</script>
+</body>
+</html>
