@@ -189,8 +189,11 @@
       this._mediaLoop = true;
       this._fileDeck = null;
       this._fileDeckTimer = null;
+      this._masterGain = null;
+      this._muted = false;
       this._started = false;
       this.onModeChange = null; // optional callback(mode)
+      this.onMuteChange = null; // optional callback(muted)
       // Expose the instance so an embedding shell (app.html) can drive
       // master volume without reaching into each screen's closure. Each
       // screen constructs exactly one engine, so this is unambiguous.
@@ -204,6 +207,9 @@
         window.__shipReactivityConfig = (value) => this.setAudioReactivity(value);
         window.__shipSoundConfig = (cfg) => this.setSonicProfile(cfg);
         window.__shipSoundState = () => this.getSonicProfile();
+        window.__shipSetMuted = (m) => this.setMuted(m);
+        window.__shipToggleMute = () => this.toggleMute();
+        window.__shipIsMuted = () => this.isMuted();
       }
       this._queueFileDeckInstall();
     }
@@ -223,6 +229,13 @@
       this._reactiveTimeData = new Uint8Array(this.analyser.fftSize);
       this._analysisInput = this.ctx.createGain();
       this._analysisInput.connect(this.analyser);
+
+      // Master output gain — the single mute point. Everything audible routes
+      // through here to the destination; the analyser is fed separately, so
+      // muting silences sound without freezing the visuals.
+      this._masterGain = this.ctx.createGain();
+      this._masterGain.gain.value = this._muted ? 0 : 1;
+      this._masterGain.connect(this.ctx.destination);
 
       // Buses for sonification voices
       this._spatialBus = this.ctx.createGain();
@@ -295,10 +308,10 @@
       this._soundPulse.connect(this._soundDelay);
       this._soundPulse.connect(this._soundModDelay);
       this._soundPulse.connect(this._soundPhaserA);
-      this._soundDry.connect(ctx.destination);
-      this._soundDelayWet.connect(ctx.destination);
-      this._soundModWet.connect(ctx.destination);
-      this._soundPhaserWet.connect(ctx.destination);
+      this._soundDry.connect(this._masterGain);
+      this._soundDelayWet.connect(this._masterGain);
+      this._soundModWet.connect(this._masterGain);
+      this._soundPhaserWet.connect(this._masterGain);
 
       this._soundPulseLfo = ctx.createOscillator();
       const lfoGain = ctx.createGain();
@@ -419,7 +432,7 @@
 
       this._mediaDryGain = ctx.createGain();
       this._mediaDryGain.gain.value = 1;
-      this._mediaDryGain.connect(ctx.destination);
+      this._mediaDryGain.connect(this._masterGain);
 
       this._mediaDelay = ctx.createDelay(1.5);
       this._mediaDelay.delayTime.value = 0.22;
@@ -430,14 +443,14 @@
       this._mediaDelay.connect(this._mediaDelayFeedback);
       this._mediaDelayFeedback.connect(this._mediaDelay);
       this._mediaDelay.connect(this._mediaDelayWet);
-      this._mediaDelayWet.connect(ctx.destination);
+      this._mediaDelayWet.connect(this._masterGain);
 
       this._mediaConvolver = ctx.createConvolver();
       this._mediaConvolver.buffer = this._makeImpulse(2.4, 2.2);
       this._mediaReverbWet = ctx.createGain();
       this._mediaReverbWet.gain.value = 0;
       this._mediaConvolver.connect(this._mediaReverbWet);
-      this._mediaReverbWet.connect(ctx.destination);
+      this._mediaReverbWet.connect(this._masterGain);
 
       this._mediaModDelay = ctx.createDelay(0.05);
       this._mediaModDelay.delayTime.value = 0.008;
@@ -451,7 +464,7 @@
       this._mediaModWet = ctx.createGain();
       this._mediaModWet.gain.value = 0;
       this._mediaModDelay.connect(this._mediaModWet);
-      this._mediaModWet.connect(ctx.destination);
+      this._mediaModWet.connect(this._masterGain);
 
       this._mediaGain.connect(this._mediaFilter);
       this._mediaFilter.connect(this._mediaDryGain);
@@ -768,6 +781,7 @@
         '<input data-role="file" type="file" accept="audio/*,video/*">' +
         '<div class="transport"><button data-role="play">Play</button><button data-role="restart">Restart</button><input data-role="seek" type="range" min="0" max="1" value="0" step="0.001"><span class="time" data-role="time">0:00 / 0:00</span></div>' +
         '<div class="inline"><button data-role="audible">File Audio</button><button data-role="loop">Loop</button><span data-role="state">file stops synth</span></div>' +
+        '<div class="inline"><button data-role="mute">Mute Output</button><span data-role="mutestate">audio on</span></div>' +
         '<label><span>Reactivity</span><input data-role="reactivity" type="range" min="0" max="2" value="1" step="0.01"></label>' +
         '<label><span>Effect</span><select data-role="effect"><option value="none">Clean</option><option value="filter">Filter</option><option value="delay">Delay</option><option value="reverb">Reverb</option><option value="chorus">Chorus</option><option value="flange">Flange</option><option value="pitch">Pitch Shift</option></select></label>' +
         '<label><span>Cutoff</span><input data-role="cutoff" type="range" min="120" max="16000" value="16000" step="10"></label>' +
@@ -780,6 +794,7 @@
       const seek = deck.querySelector('[data-role=seek]');
       const audible = deck.querySelector('[data-role=audible]');
       const loop = deck.querySelector('[data-role=loop]');
+      const mute = deck.querySelector('[data-role=mute]');
       const reactivity = deck.querySelector('[data-role=reactivity]');
       const effect = deck.querySelector('[data-role=effect]');
       const cutoff = deck.querySelector('[data-role=cutoff]');
@@ -792,6 +807,7 @@
       seek.addEventListener('input', () => this.mediaTransport({ action: 'seekRatio', ratio: parseFloat(seek.value) }));
       audible.addEventListener('click', () => this.configureMedia({ audible: !this._mediaAudible }));
       loop.addEventListener('click', () => this.configureMedia({ loop: !this._mediaLoop }));
+      mute.addEventListener('click', () => { this.setMuted(!this._muted); this._updateFileDeck(); });
       reactivity.addEventListener('input', () => this.setAudioReactivity(parseFloat(reactivity.value)));
       effect.addEventListener('change', () => this.configureMedia({ effect: effect.value }));
       cutoff.addEventListener('input', () => this.configureMedia({ effect: effect.value, cutoff: parseFloat(cutoff.value) }));
@@ -819,6 +835,10 @@
       audible.classList.toggle('active', this._mediaAudible);
       audible.textContent = this._mediaAudible ? 'File Audio' : 'Muted';
       loop.classList.toggle('active', this._mediaLoop);
+      const mute = this._fileDeck.querySelector('[data-role=mute]');
+      const mutestate = this._fileDeck.querySelector('[data-role=mutestate]');
+      if (mute) { mute.classList.toggle('active', this._muted); mute.textContent = this._muted ? 'Muted' : 'Mute Output'; }
+      if (mutestate) mutestate.textContent = this._muted ? 'all audio off' : 'audio on';
       reactivity.value = String(this._audioReactivity);
       effect.value = this._mediaEffect;
     }
@@ -914,6 +934,19 @@
 
     setSpatialGain(g, rampSeconds) { this._rampGain(this._spatialBus, g, rampSeconds); }
     setStandardGain(g, rampSeconds) { this._rampGain(this._standardBus, g, rampSeconds); }
+
+    // Master mute — silences all audible output at the final gain stage. The
+    // analyser keeps running, so visuals stay live while muted. Safe to call
+    // before start(): the flag is remembered and applied when the context is
+    // built. A short ramp avoids clicks.
+    setMuted(muted) {
+      this._muted = !!muted;
+      if (this._masterGain) this._rampGain(this._masterGain, this._muted ? 0 : 1, 0.08);
+      if (this.onMuteChange) this.onMuteChange(this._muted);
+      return this._muted;
+    }
+    toggleMute() { return this.setMuted(!this._muted); }
+    isMuted() { return this._muted; }
 
     createSpatialVoice(opts) {
       if (this._mediaIsPlaying()) return new NullVoice();

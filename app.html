@@ -39,6 +39,10 @@
     background:transparent; color:var(--dim); border:1px solid var(--edge); padding:6px 10px; cursor:pointer; white-space:nowrap; }
   #bar .media button.active{ color:var(--accent); border-color:var(--accent); }
   #bar .media .media-name{ max-width:150px; color:var(--dim); font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #bar #master-mute{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:10px; letter-spacing:0.14em; text-transform:uppercase;
+    background:transparent; color:var(--dim); border:1px solid var(--edge); padding:6px 12px; cursor:pointer; white-space:nowrap; flex:none; }
+  #bar #master-mute:hover{ color:var(--ink); border-color:var(--edge-hi); }
+  #bar #master-mute.active{ color:#FF6B6B; border-color:#FF6B6B; }
   #bar .media .media-time{ width:72px; color:var(--dim); font-size:10px; text-align:right; }
   #bar .spacer{ flex:1; }
   #bar .link{ font-size:10px; letter-spacing:0.1em; color:var(--dim); text-decoration:none; }
@@ -72,24 +76,54 @@
   .pane.rail .pane-bar .mini-label{ display:none; }
   .pane.rail .pane-bar .nm{ font-size:8.5px; }
   .pane.grid{ border-color:var(--edge-hi); }
-  .pane.grid .pane-bar{ opacity:1; pointer-events:auto; background:rgba(9,13,18,0.9); }
-  .pane.grid .pane-bar .promote{ display:none; }
-  .pane.grid .pane-bar input[type=range]{ width:40px; }
-  .pane.grid iframe{ top:20px; height:48%; }
+  /* grid thumbnails: full-bleed visualizer, thin overlay bar, knob strip at bottom */
+  .pane.grid .pane-bar{ opacity:1; pointer-events:none; height:16px; padding:0 6px; border-bottom:0;
+    background:linear-gradient(rgba(6,9,12,0.9),rgba(6,9,12,0)); }
+  .pane.grid .pane-bar .promote,
+  .pane.grid .pane-bar .panelctl,
+  .pane.grid .pane-bar .vol,
+  .pane.grid .pane-bar .react,
+  .pane.grid .pane-bar .mini-label,
+  .pane.grid .pane-bar .sp{ display:none; }
+  .pane.grid .pane-bar .nm{ font-size:8px; }
+  .pane.grid iframe{ top:0; height:100%; }
+
+  /* knob panel — transparent overlay across the module's bottom: a row of
+     rotary knobs, then an info box that reveals the hovered knob's details.
+     The whole panel is see-through so the visualizer fills the module and the
+     controls just mask it with a soft gradient. Reusable via buildKnobPanel(). */
   .inline-panel{
-    position:absolute; left:0; right:0; bottom:0; height:calc(52% - 20px); z-index:4;
-    display:none; overflow:auto; padding:7px 8px 9px;
-    background:rgba(6,9,12,0.96); border-top:1px solid var(--edge);
+    position:absolute; left:0; right:0; bottom:0; z-index:4;
+    display:none; flex-direction:column; gap:3px; padding:8px 7px 4px; pointer-events:none;
+    background:linear-gradient(rgba(4,6,10,0),rgba(4,6,10,0.5) 38%,rgba(4,6,10,0.8));
   }
-  .pane.grid .inline-panel{ display:block; }
-  .inline-panel .head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px; }
-  .inline-panel .title{ font-family:'Space Grotesk',sans-serif; font-size:9px; color:var(--ink); letter-spacing:0.12em; text-transform:uppercase; }
-  .inline-panel .sub{ color:var(--dim); font-size:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .inline-panel label{ display:grid; grid-template-columns:86px 1fr 35px; gap:6px; align-items:center; margin:4px 0; color:var(--dim); font-size:8.5px; }
-  .inline-panel input[type=range]{ width:100%; accent-color:var(--accent); }
-  .inline-panel .actions{ display:flex; justify-content:flex-end; gap:6px; margin-top:6px; }
-  .inline-panel button{ background:transparent; color:var(--dim); border:1px solid var(--edge); padding:3px 6px; font:500 8px 'Space Grotesk',sans-serif; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; }
-  .inline-panel button:hover{ color:var(--accent); border-color:var(--accent); }
+  .pane.grid .inline-panel{ display:flex; }
+  .inline-panel .knob-row{ display:flex; align-items:flex-end; gap:4px; pointer-events:auto;
+    overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; }
+  .inline-panel .knob-row::-webkit-scrollbar{ height:4px; }
+  .inline-panel .knob-row::-webkit-scrollbar-thumb{ background:var(--edge-hi); border-radius:2px; }
+  .knob{ flex:0 0 auto; width:30px; display:flex; flex-direction:column; align-items:center; gap:2px;
+    cursor:ns-resize; user-select:none; -webkit-user-select:none; touch-action:none; }
+  .knob .dial{ position:relative; width:23px; height:23px; border-radius:50%;
+    background:radial-gradient(circle at 50% 36%, #1c2733, #090e13 72%);
+    border:1px solid var(--edge-hi); box-shadow:inset 0 1px 2px rgba(0,0,0,0.65); }
+  .knob .dial .ind{ position:absolute; left:50%; top:50%; width:2px; height:9px; border-radius:1px;
+    background:var(--kc,var(--accent)); transform-origin:50% 100%;
+    transform:translate(-50%,-100%) rotate(var(--ang,0deg)); }
+  .knob.active .dial{ border-color:var(--kc,var(--accent));
+    box-shadow:0 0 7px var(--kc,var(--accent)), inset 0 1px 2px rgba(0,0,0,0.65); }
+  .knob .kval{ font:600 7px 'JetBrains Mono',monospace; color:var(--ink); line-height:1; white-space:nowrap; }
+  .knob.active .kval{ color:var(--kc,var(--accent)); }
+  /* info box under the knobs */
+  .inline-panel .knob-info{ display:flex; align-items:baseline; gap:6px; min-height:15px; padding:2px 2px 0;
+    border-top:1px solid rgba(120,150,160,0.16); pointer-events:none; }
+  .inline-panel .knob-info .ki-label{ font:600 8px 'Space Grotesk',sans-serif; letter-spacing:0.07em;
+    text-transform:uppercase; color:var(--kc,var(--ink)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .inline-panel .knob-info .ki-val{ font:600 8px 'JetBrains Mono',monospace; color:var(--kc,var(--accent)); white-space:nowrap; }
+  .inline-panel .knob-info .ki-range{ font:500 7.5px 'JetBrains Mono',monospace; color:var(--dim);
+    margin-left:auto; white-space:nowrap; }
+  .inline-panel .knob-info.idle .ki-label{ color:var(--dim); font-weight:500; letter-spacing:0.1em; }
+  .inline-panel .knob-info.idle .ki-range{ text-transform:none; letter-spacing:0.02em; }
   .empty-slot{
     position:absolute; border:1px dashed var(--edge); background:rgba(4,6,10,0.45);
     display:none; align-items:center; justify-content:center; color:var(--dim);
@@ -154,6 +188,7 @@
     <input id="media-amount" type="range" min="0" max="1" step="0.01" value="0.5" title="Effect amount">
     <span class="media-name" id="media-name">no file</span>
   </div>
+  <button id="master-mute" title="Mute all audio (visuals keep running)">MUTE</button>
   <div class="spacer"></div>
   <a class="link" href="launcher.html">MULTI-WINDOW LAUNCHER →</a>
 </div>
@@ -210,6 +245,7 @@
   let preset = 'solo';
   let leftRailW = 15;
   let rightRailW = 15;
+  let muted = false;
   let booted = false;
   let loadedCount = 0;
   let mediaFile = null;
@@ -445,7 +481,7 @@
       p.el.classList.toggle('center', isCenter);
       p.el.classList.toggle('rail', !isCenter && !grid);
       p.el.classList.toggle('grid', grid);
-      configure(m.id, grid ? GRID_FPS : (isCenter ? CENTER_FPS : RAIL_FPS), p.vol, grid ? false : !isCenter);
+      configure(m.id, grid ? GRID_FPS : (isCenter ? CENTER_FPS : RAIL_FPS), p.vol, grid ? true : !isCenter);
     });
     const empties = gridEmptyRects();
     emptySlots.forEach((slot, i) => {
@@ -461,19 +497,19 @@
 
   function configure(id, fps, volume, minimal){
     const p = panes[id];
-    try { if(p.iframe.contentWindow && p.iframe.contentWindow.__shipConfig) p.iframe.contentWindow.__shipConfig({ fps, volume, minimal, reactivity:p.reactivity, panel:p.panel }); } catch(e){}
+    try { if(p.iframe.contentWindow && p.iframe.contentWindow.__shipConfig) p.iframe.contentWindow.__shipConfig({ fps, volume, minimal, muted, reactivity:p.reactivity, panel:p.panel }); } catch(e){}
     try { if(p.iframe.contentWindow && p.iframe.contentWindow.__shipMediaConfig) p.iframe.contentWindow.__shipMediaConfig(paneMediaPayload(id)); } catch(e){}
   }
   function setVolume(id, v){
     const p = panes[id]; p.vol = v;
     const center = p.el.classList.contains('center');
-    configure(id, isGridPreset() ? GRID_FPS : (center ? CENTER_FPS : RAIL_FPS), v, isGridPreset() ? false : !center);
+    configure(id, isGridPreset() ? GRID_FPS : (center ? CENTER_FPS : RAIL_FPS), v, isGridPreset() ? true : !center);
     savePrefs();
   }
   function setReactivity(id, v){
     const p = panes[id]; p.reactivity = v;
     const center = p.el.classList.contains('center');
-    configure(id, isGridPreset() ? GRID_FPS : (center ? CENTER_FPS : RAIL_FPS), p.vol, isGridPreset() ? false : !center);
+    configure(id, isGridPreset() ? GRID_FPS : (center ? CENTER_FPS : RAIL_FPS), p.vol, isGridPreset() ? true : !center);
     savePrefs();
   }
   function defaultPanelConfig(id){
@@ -486,7 +522,7 @@
     const p = panes[id];
     p.panel[key] = value;
     const center = p.el.classList.contains('center');
-    configure(id, isGridPreset() ? GRID_FPS : (center ? CENTER_FPS : RAIL_FPS), p.vol, isGridPreset() ? false : !center);
+    configure(id, isGridPreset() ? GRID_FPS : (center ? CENTER_FPS : RAIL_FPS), p.vol, isGridPreset() ? true : !center);
     savePrefs();
   }
 
@@ -537,13 +573,113 @@
     ).join('');
   }
 
+  // Grid thumbnails get a reusable knob panel across the bottom: a row of
+  // rotary knobs (module volume + reactivity, then every panel-control
+  // parameter) sitting above an info box that reveals the hovered knob's
+  // details. Drag a knob vertically to change it; double-click resets it.
   function renderInlinePanel(id){
     const p = panes[id];
-    p.inlinePanel.innerHTML =
-      `<div class="head"><div class="title">Controls</div><div class="sub">${p.module.title}</div></div>`+
-      panelControlFields(id)+
-      `<div class="actions">${id === 'threat-matrix' ? '<button data-action="randomize">Randomize</button>' : ''}<button data-action="reset">Reset</button></div>`;
-    bindPanelControls(p.inlinePanel, id, false);
+    const specs = [
+      { key:'__vol', label:'Volume', min:0, max:1, step:0.01, kind:'percent', color:'var(--accent)',
+        get:()=>p.vol, set:v=>setVolume(id,v), def:DEFAULT_VOL },
+      { key:'__rx', label:'Reactivity', min:0, max:2, step:0.01, kind:'x', color:'#B8D878',
+        get:()=>p.reactivity, set:v=>setReactivity(id,v), def:1 }
+    ];
+    (PANEL_CONTROLS[id] || []).forEach(ctrl => {
+      specs.push({ key:ctrl.key, label:ctrl.label, min:ctrl.min, max:ctrl.max, step:ctrl.step,
+        kind:ctrl.kind, isInt:ctrl.kind === 'int', color:p.module.accent,
+        get:()=>p.panel[ctrl.key], set:v=>setPanelControl(id, ctrl.key, v), def:ctrl.value });
+    });
+    buildKnobPanel(p.inlinePanel, specs, { title:p.module.title, hint:'drag ↕ · dbl-click resets' });
+  }
+
+  // Modular knob panel: renders `specs` into `container` as a knob row + a
+  // shared info box. Self-contained and reusable for any module — pass a list
+  // of specs ({label,min,max,step,kind,color,get,set,def,isInt}) and options.
+  function buildKnobPanel(container, specs, opts){
+    opts = opts || {};
+    container.innerHTML = '';
+    const row = document.createElement('div'); row.className = 'knob-row';
+    const info = document.createElement('div'); info.className = 'knob-info idle';
+    info.innerHTML = `<span class="ki-label"></span><span class="ki-val"></span><span class="ki-range"></span>`;
+    const iLabel = info.querySelector('.ki-label');
+    const iVal = info.querySelector('.ki-val');
+    const iRange = info.querySelector('.ki-range');
+    let hovered = null, dragging = null, shown = null;
+    function showIdle(){
+      shown = null; info.classList.add('idle'); info.style.removeProperty('--kc');
+      iLabel.textContent = opts.title || 'Controls';
+      iVal.textContent = '';
+      iRange.textContent = opts.hint || 'hover a control';
+    }
+    function show(s){
+      shown = s; info.classList.remove('idle'); info.style.setProperty('--kc', s.color);
+      iLabel.textContent = s.label;
+      iVal.textContent = formatPanelValue(s.kind, s.get());
+      iRange.textContent = formatPanelValue(s.kind, s.min) + ' – ' + formatPanelValue(s.kind, s.max);
+    }
+    const hooks = {
+      enter(s){ hovered = s; if(!dragging) show(s); },
+      leave(s){ if(hovered === s) hovered = null; if(!dragging && !hovered) showIdle(); },
+      down(s){ dragging = s; show(s); },
+      up(){ dragging = null; if(hovered) show(hovered); else showIdle(); },
+      change(s){ if(shown === s) iVal.textContent = formatPanelValue(s.kind, s.get()); }
+    };
+    specs.forEach(s => row.appendChild(buildKnob(s, hooks)));
+    container.appendChild(row);
+    container.appendChild(info);
+    showIdle();
+  }
+
+  function buildKnob(s, hooks){
+    hooks = hooks || {};
+    const el = document.createElement('div');
+    el.className = 'knob';
+    el.style.setProperty('--kc', s.color);
+    el.title = s.label;
+    el.innerHTML = `<div class="dial"><span class="ind"></span></div><div class="kval"></div>`;
+    const ind = el.querySelector('.ind');
+    const out = el.querySelector('.kval');
+    const span = s.max - s.min || 1;
+    function render(){
+      const v = s.get();
+      const norm = Math.max(0, Math.min(1, (v - s.min) / span));
+      ind.style.setProperty('--ang', (-135 + 270 * norm) + 'deg');
+      out.textContent = formatPanelValue(s.kind, v);
+    }
+    function apply(v){
+      v = Math.max(s.min, Math.min(s.max, v));
+      if(s.isInt){ v = Math.round(v); }
+      else { v = Math.round(v / s.step) * s.step; v = parseFloat(v.toFixed(4)); }
+      s.set(v);
+      render();
+      if(hooks.change) hooks.change(s);
+    }
+    let startY = 0, startV = 0, dragging = false;
+    el.addEventListener('pointerdown', e => {
+      dragging = true; startY = e.clientY; startV = s.get();
+      el.classList.add('active');
+      try { el.setPointerCapture(e.pointerId); } catch(_){}
+      if(hooks.down) hooks.down(s);
+      e.preventDefault();
+    });
+    el.addEventListener('pointermove', e => {
+      if(!dragging) return;
+      apply(startV + (-(e.clientY - startY) / 150) * span);
+    });
+    function end(e){
+      if(!dragging) return;
+      dragging = false; el.classList.remove('active');
+      try { el.releasePointerCapture(e.pointerId); } catch(_){}
+      if(hooks.up) hooks.up(s);
+    }
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    el.addEventListener('mouseenter', () => { if(hooks.enter) hooks.enter(s); });
+    el.addEventListener('mouseleave', () => { if(hooks.leave) hooks.leave(s); });
+    el.addEventListener('dblclick', () => apply(s.def));
+    render();
+    return el;
   }
 
   function renderAllInlinePanels(){
@@ -567,7 +703,7 @@
       if(root === panelPop) renderPanelPopover(id);
       renderInlinePanel(id);
       const center = p.el.classList.contains('center');
-      configure(id, isGridPreset() ? GRID_FPS : (center ? CENTER_FPS : RAIL_FPS), p.vol, isGridPreset() ? false : !center);
+      configure(id, isGridPreset() ? GRID_FPS : (center ? CENTER_FPS : RAIL_FPS), p.vol, isGridPreset() ? true : !center);
       savePrefs();
     });
     const randomize = root.querySelector('[data-action=randomize]');
@@ -631,6 +767,22 @@
   railLeftInput.addEventListener('input', () => setRailWidth('left', railLeftInput.value));
   railRightInput.addEventListener('input', () => setRailWidth('right', railRightInput.value));
 
+  // master mute — silences every pane at once (visuals keep running)
+  const masterMuteBtn = document.getElementById('master-mute');
+  function setMasterMute(m){
+    muted = !!m;
+    MODULES.forEach(mod => {
+      try { const w = panes[mod.id].iframe.contentWindow; if(w && w.__shipConfig) w.__shipConfig({ muted }); } catch(e){}
+    });
+    updateMuteControl();
+    savePrefs();
+  }
+  function updateMuteControl(){
+    masterMuteBtn.classList.toggle('active', muted);
+    masterMuteBtn.textContent = muted ? 'MUTED' : 'MUTE';
+  }
+  masterMuteBtn.addEventListener('click', () => setMasterMute(!muted));
+
   // preset buttons
   const presetsEl = document.getElementById('presets');
   Object.keys(PRESETS).forEach(name => {
@@ -641,13 +793,14 @@
 
   // ---- persistence (localStorage) ----
   function savePrefs(){
-    try { localStorage.setItem('shipConsole', JSON.stringify({ preset, assignment, rails:{ left:leftRailW, right:rightRailW }, vols: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].vol])), reacts: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].reactivity])), panels: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].panel])) })); } catch(e){}
+    try { localStorage.setItem('shipConsole', JSON.stringify({ preset, assignment, muted, rails:{ left:leftRailW, right:rightRailW }, vols: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].vol])), reacts: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].reactivity])), panels: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].panel])) })); } catch(e){}
   }
   function loadPrefs(){
     try {
       const s = JSON.parse(localStorage.getItem('shipConsole')||'null');
       if(s && s.assignment && s.assignment.length === N){ assignment = s.assignment; preset = s.preset || 'solo'; }
       if(s && s.rails){ leftRailW = Math.max(8, Math.min(28, Number(s.rails.left) || 15)); rightRailW = Math.max(8, Math.min(28, Number(s.rails.right) || 15)); }
+      if(s && s.muted != null){ muted = !!s.muted; }
       if(s && s.vols){ MODULES.forEach(m => { if(s.vols[m.id] != null){ panes[m.id].vol = s.vols[m.id]; panes[m.id].slider.value = s.vols[m.id]; } }); }
       if(s && s.reacts){ MODULES.forEach(m => { if(s.reacts[m.id] != null){ panes[m.id].reactivity = s.reacts[m.id]; panes[m.id].reactSlider.value = s.reacts[m.id]; } }); }
       if(s && s.panels){ MODULES.forEach(m => { if(s.panels[m.id]) panes[m.id].panel = Object.assign(defaultPanelConfig(m.id), s.panels[m.id]); }); }
@@ -815,6 +968,7 @@
   // init
   loadPrefs();
   updateRailControls();
+  updateMuteControl();
   setPreset(preset);
   broadcastMediaConfig();
   setInterval(refreshMediaTransport, 500);

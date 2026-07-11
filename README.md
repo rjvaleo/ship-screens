@@ -32,10 +32,12 @@ Two ways to run them:
   a single window. Pick a layout — **Solo / Duo / Trio** feature one, two, or
   three modules full-rate and full-volume in the center while the rest run as
   low-frame-rate previews on the side rails, or **Grid** shows all 10 at once as
-  pure-visualizer thumbnails. Each pane has its own volume + reactivity sliders
-  and a **CTL** panel for live sound tuning; click a rail pane's ⤢ to promote it
-  to center. Load an audio/video file in the top bar and every pane reacts to it.
-  One "Engage Console" gesture boots audio in every pane at once.
+  full-bleed visualizer thumbnails, each with a row of rotary **knobs** over the
+  bottom for live tuning. Each pane has its own volume + reactivity and a **CTL**
+  panel for live sound tuning; click a rail pane's ⤢ to promote it to center.
+  Load an audio/video file in the top bar and every pane reacts to it, or hit
+  **MUTE** to silence the whole wall while the visuals keep running. One "Engage
+  Console" gesture boots audio in every pane at once.
 - **`launcher.html` — the multi-window deck**: assign any screen to any of 10
   slots and pop each out as its own OS-level window to tile across a desktop.
 
@@ -60,11 +62,11 @@ deliberate (see CLAUDE.md); the choices below all follow from it.
 **Shared code:** two plain, non-module scripts. [`shared/audio-engine.js`](shared/audio-engine.js)
 (`window.ShipAudioEngine`) provides source acquisition (mic / media file /
 synth), FFT/time-domain data, spatial voices, standard pings, the media-file
-effects chain, and a self-injected **File Deck** UI. [`shared/embed.js`](shared/embed.js)
-is the console hook activated by `?embed=1` — it boots a screen on the shell's
-gesture and relays frame-rate, volume, reactivity, per-screen panel config, and
-"minimal" (thumbnail) mode from the console. Screens are otherwise fully
-independent.
+effects chain, a master **mute** at the output stage, and a self-injected **File
+Deck** UI. [`shared/embed.js`](shared/embed.js) is the console hook activated by
+`?embed=1` — it boots a screen on the shell's gesture and relays frame-rate,
+volume, reactivity, mute, per-screen panel config, and "minimal" (thumbnail)
+mode from the console. Screens are otherwise fully independent.
 
 **No dependencies to install.** The only external loads at runtime are the
 Three.js CDN script and the Google Fonts stylesheets.
@@ -140,9 +142,14 @@ open separate windows.
 - **Layouts** (top bar):
   - **Solo** — 1 hero + rails · **Duo** — 2 features + rails · **Trio** — hero +
     2 stacked + rails. Switching between these keeps your current featured order.
-  - **Grid** — all 10 screens at once as a 4×3 wall of pure-visualizer
-    thumbnails (text chrome hidden, mid frame rate). Hover a thumbnail for its
-    controls.
+  - **Grid** — all 10 screens at once as a 4×3 wall. Each cell is a **full-bleed
+    visualizer** (text chrome hidden, mid frame rate) with a transparent **knob
+    panel** overlaid across the bottom: a row of rotary knobs (module volume,
+    reactivity, then every one of that screen's sonification parameters) above an
+    **info box** that shows the details of whichever knob you hover — its label,
+    live value, and range. Drag a knob vertically to change it; double-click to
+    reset it to default. The panel is see-through, so the visual stays the whole
+    cell and the controls just mask it.
 - **Engage Console** — one click boots audio in every pane at once (browsers
   require a user gesture to start audio; the console needs only one for all 10).
 - **Center vs. rails** — featured (center) panes render at full frame rate
@@ -161,18 +168,22 @@ open separate windows.
   reacts to *it* instead of the mic/synth. Play/restart, seek, loop, mute the
   file's own audio ("File Audio"), and apply a pass-through effect (Clean,
   Filter, Delay, Reverb, Chorus, Flange, Pitch) with an amount slider.
+- **MUTE** (top bar) — a master mute that silences every pane at once (the
+  button turns red "MUTED"). It cuts sound at each engine's final output stage,
+  so the **visualizers keep running** — the wall stays alive, just silent.
 - **Rail width** — L/R sliders in the top bar resize the side rails (8%–28%).
 - **Promote** — click a rail pane's **⤢** to swap it into the primary center
   slot (the previous hero drops back to the rail). No reload — panes never
   re-boot when you rearrange them.
-- Your layout, order, volumes, and reactivity persist in `localStorage`.
+- Your layout, order, volumes, reactivity, and mute state persist in
+  `localStorage`.
 
 How it works: each screen is loaded in an `<iframe>` with `?embed=1`, which
 activates [`shared/embed.js`](shared/embed.js) — it hides the screen's own boot
 overlay/controls and lets the console drive boot, frame rate, volume,
-reactivity, per-screen panel config, and "minimal" thumbnail mode. The panes are
-positioned by CSS and never reparented, so rearranging the wall never reloads (or
-re-boots) a screen.
+reactivity, mute, per-screen panel config, and "minimal" thumbnail mode. The
+panes are positioned by CSS and never reparented, so rearranging the wall never
+reloads (or re-boots) a screen.
 
 ## Feed your own audio (File Deck)
 
@@ -185,8 +196,9 @@ sonification all react to it.
 - **On a standalone screen:** each screen auto-injects a small **File Deck**
   panel (bottom-left) after boot. Pick a file, then use its transport (play /
   restart / seek / loop), toggle whether the file's own audio is audible, set an
-  **audio-reactivity** amount, and choose a pass-through **effect** (Clean,
-  Filter, Delay, Reverb, Chorus, Flange, Pitch) with a cutoff/amount control.
+  **audio-reactivity** amount, choose a pass-through **effect** (Clean, Filter,
+  Delay, Reverb, Chorus, Flange, Pitch) with a cutoff/amount control, and use
+  **Mute Output** to silence that screen entirely (visuals keep running).
 
 The engine analyses the file exactly like a mic feed, so the visuals stay
 FFT-driven — you're just choosing what sound they listen to.
@@ -196,12 +208,17 @@ FFT-driven — you're just choosing what sound they listen to.
 Beyond volume, each screen exposes a small set of **sonification parameters** you
 can retune live — pitch, gain, trigger thresholds, ping/klaxon rates, animation
 speeds, and so on — so the same screen can range from a quiet ambient drone to an
-aggressive alert console. In the Bridge Console these live behind each pane's
-**CTL** button (and inline under each Grid thumbnail); a screen picks them up
-through its `window.__shipPanelConfig(cfg)` hook, which the console drives via
-`embed.js`. Parameters are per-screen — Reactor exposes breach threshold and
-klaxon rate/pitch; Nav Core exposes route speed, oscillator pitch, PWM depth and
-a compressor; and so on.
+aggressive alert console. In the Bridge Console these appear two ways:
+
+- **Solo / Duo / Trio** — behind each pane's **CTL** button, as a popover of
+  labelled sliders.
+- **Grid** — as the row of rotary **knobs** overlaid on each thumbnail, with an
+  info box beneath that names the hovered knob and shows its value and range.
+
+Both surfaces are driven by the same reusable knob/panel code and the screen's
+`window.__shipPanelConfig(cfg)` hook (relayed by `embed.js`). Parameters are
+per-screen — Reactor exposes breach threshold and klaxon rate/pitch; Nav Core
+exposes route speed, oscillator pitch, PWM depth and a compressor; and so on.
 
 ## Using the launcher
 

@@ -23,7 +23,7 @@
   var params = new URLSearchParams(location.search);
   if (!params.has('embed')) return;
 
-  var state = { fps: 60, volume: 1, reactivity: 1, booted: false };
+  var state = { fps: 60, volume: 1, reactivity: 1, muted: false, booted: false };
   window.__shipState = state;
 
   // Hide standalone chrome — the shell provides its own.
@@ -61,12 +61,17 @@
     if (e && e.setAudioReactivity) e.setAudioReactivity(state.reactivity);
   }
 
+  function applyMuted() {
+    var e = window.__shipEngine;
+    if (e && e.setMuted) e.setMuted(state.muted);
+  }
+
   function boot() {
-    if (state.booted) { applyVolume(); applyReactivity(); applyPanel(); return; }
+    if (state.booted) { applyVolume(); applyReactivity(); applyMuted(); applyPanel(); return; }
     state.booted = true;
     var btn = document.getElementById('boot-btn');
     if (btn) btn.click();          // runs the screen's real start() within the caller's gesture
-    setTimeout(function () { applyVolume(); applyReactivity(); applyPanel(); }, 300);  // the engine's buses exist only after start()
+    setTimeout(function () { applyVolume(); applyReactivity(); applyMuted(); applyPanel(); }, 300);  // the engine's buses exist only after start()
   }
 
   function applyPanel() {
@@ -131,6 +136,7 @@
     if (cfg.fps != null) state.fps = cfg.fps;
     if (cfg.volume != null) { state.volume = cfg.volume; applyVolume(); }
     if (cfg.reactivity != null) { state.reactivity = cfg.reactivity; applyReactivity(); }
+    if (cfg.muted != null) { state.muted = !!cfg.muted; applyMuted(); }
     if (cfg.panel != null) { state.panel = cfg.panel; applyPanel(); }
     if (cfg.minimal != null) applyMinimal(!!cfg.minimal);
   };
