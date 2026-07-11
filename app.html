@@ -26,6 +26,20 @@
     background:transparent; color:var(--dim); border:1px solid var(--edge); padding:7px 13px; cursor:pointer; }
   #bar .presets button:hover{ border-color:var(--edge-hi); color:var(--ink); }
   #bar .presets button.active{ border-color:var(--accent); color:var(--accent); }
+  #bar .rail-size{ display:flex; align-items:center; gap:8px; padding-left:2px; }
+  #bar .rail-size label{ display:flex; align-items:center; gap:5px; color:var(--dim); font-size:9px; letter-spacing:0.1em; white-space:nowrap; }
+  #bar .rail-size input[type=range]{ width:78px; accent-color:var(--accent); }
+  #bar .rail-size output{ width:28px; text-align:right; color:var(--dim); font-size:9px; }
+  #bar .media{ display:flex; align-items:center; gap:7px; min-width:0; }
+  #bar .media input[type=file]{ width:156px; color:var(--dim); font-size:10px; }
+  #bar .media input[type=range]{ width:72px; accent-color:var(--accent); }
+  #bar .media input.seek{ width:110px; }
+  #bar .media select{ background:transparent; color:var(--dim); border:1px solid var(--edge); padding:6px 8px; font-family:'JetBrains Mono',monospace; font-size:10px; }
+  #bar .media button{ font-family:'Space Grotesk',sans-serif; font-weight:500; font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
+    background:transparent; color:var(--dim); border:1px solid var(--edge); padding:6px 10px; cursor:pointer; white-space:nowrap; }
+  #bar .media button.active{ color:var(--accent); border-color:var(--accent); }
+  #bar .media .media-name{ max-width:150px; color:var(--dim); font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #bar .media .media-time{ width:72px; color:var(--dim); font-size:10px; text-align:right; }
   #bar .spacer{ flex:1; }
   #bar .link{ font-size:10px; letter-spacing:0.1em; color:var(--dim); text-decoration:none; }
   #bar .link:hover{ color:var(--accent); }
@@ -42,12 +56,63 @@
   .pane-bar .nm{ font-family:'Space Grotesk',sans-serif; font-weight:500; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .pane-bar .sp{ flex:1; }
   .pane-bar input[type=range]{ width:52px; height:12px; cursor:pointer; accent-color:var(--accent); }
+  .pane-bar input.react{ accent-color:#B8D878; }
+  .pane-bar .mini-label{ color:var(--dim); font-size:8px; letter-spacing:0.08em; }
+  .pane-bar .panelctl{ cursor:pointer; color:var(--dim); border:1px solid var(--edge); background:transparent; font-size:8px; line-height:1; padding:2px 5px; letter-spacing:0.08em; }
+  .pane-bar .panelctl:hover,.pane-bar .panelctl.active{ color:var(--accent); border-color:var(--accent); }
   .pane-bar .promote{ cursor:pointer; color:var(--dim); border:1px solid var(--edge); background:transparent; font-size:9px; line-height:1; padding:2px 5px; }
   .pane-bar .promote:hover{ color:var(--accent); border-color:var(--accent); }
   .pane.center .pane-bar .promote{ display:none; }
-  .pane iframe{ position:absolute; top:20px; left:0; width:100%; height:calc(100% - 20px); border:0; display:block; background:#04060A; }
-  .pane.rail .pane-bar input[type=range]{ width:38px; }
+  .pane iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; display:block; background:#04060A; }
+  .pane.center iframe{ top:20px; height:calc(100% - 20px); }
+  /* rails: pure-visualizer thumbnails — bar hidden until hover */
+  .pane.rail .pane-bar{ opacity:0; pointer-events:none; transition:opacity .15s; background:rgba(9,13,18,0.92); }
+  .pane.rail:hover .pane-bar{ opacity:1; pointer-events:auto; }
+  .pane.rail .pane-bar input[type=range]{ width:34px; }
+  .pane.rail .pane-bar .mini-label{ display:none; }
   .pane.rail .pane-bar .nm{ font-size:8.5px; }
+  .pane.grid{ border-color:var(--edge-hi); }
+  .pane.grid .pane-bar{ opacity:1; pointer-events:auto; background:rgba(9,13,18,0.9); }
+  .pane.grid .pane-bar .promote{ display:none; }
+  .pane.grid .pane-bar input[type=range]{ width:40px; }
+  .pane.grid iframe{ top:20px; height:48%; }
+  .inline-panel{
+    position:absolute; left:0; right:0; bottom:0; height:calc(52% - 20px); z-index:4;
+    display:none; overflow:auto; padding:7px 8px 9px;
+    background:rgba(6,9,12,0.96); border-top:1px solid var(--edge);
+  }
+  .pane.grid .inline-panel{ display:block; }
+  .inline-panel .head{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px; }
+  .inline-panel .title{ font-family:'Space Grotesk',sans-serif; font-size:9px; color:var(--ink); letter-spacing:0.12em; text-transform:uppercase; }
+  .inline-panel .sub{ color:var(--dim); font-size:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .inline-panel label{ display:grid; grid-template-columns:86px 1fr 35px; gap:6px; align-items:center; margin:4px 0; color:var(--dim); font-size:8.5px; }
+  .inline-panel input[type=range]{ width:100%; accent-color:var(--accent); }
+  .inline-panel .actions{ display:flex; justify-content:flex-end; gap:6px; margin-top:6px; }
+  .inline-panel button{ background:transparent; color:var(--dim); border:1px solid var(--edge); padding:3px 6px; font:500 8px 'Space Grotesk',sans-serif; text-transform:uppercase; letter-spacing:0.08em; cursor:pointer; }
+  .inline-panel button:hover{ color:var(--accent); border-color:var(--accent); }
+  .empty-slot{
+    position:absolute; border:1px dashed var(--edge); background:rgba(4,6,10,0.45);
+    display:none; align-items:center; justify-content:center; color:var(--dim);
+    font:500 11px 'Space Grotesk',sans-serif; letter-spacing:0.14em; text-transform:uppercase;
+  }
+  body.grid-view .empty-slot{ display:flex; }
+  body.grid-view #bar .rail-size{ display:none; }
+
+  #panel-pop{
+    position:fixed; z-index:35; width:326px; max-height:calc(100vh - 70px); overflow:auto; display:none;
+    background:rgba(8,12,16,0.96); border:1px solid var(--edge-hi);
+    box-shadow:0 18px 50px rgba(0,0,0,0.45); padding:12px;
+  }
+  #panel-pop.open{ display:block; }
+  #panel-pop .head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  #panel-pop .title{ font-family:'Space Grotesk',sans-serif; color:var(--ink); font-size:12px; letter-spacing:0.12em; text-transform:uppercase; }
+  #panel-pop .sub{ color:var(--dim); font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:118px; }
+  #panel-pop label{ display:grid; grid-template-columns:118px 1fr 42px; gap:8px; align-items:center; margin:7px 0; color:var(--dim); font-size:10px; }
+  #panel-pop input[type=range]{ width:100%; accent-color:var(--accent); }
+  #panel-pop .hint{ margin-top:9px; color:var(--dim); font-size:9px; line-height:1.45; }
+  #panel-pop .actions{ display:flex; justify-content:flex-end; gap:7px; margin-top:10px; }
+  #panel-pop button{ background:transparent; color:var(--dim); border:1px solid var(--edge); padding:5px 8px; font:500 10px 'Space Grotesk',sans-serif; text-transform:uppercase; letter-spacing:0.1em; cursor:pointer; }
+  #panel-pop button:hover{ color:var(--accent); border-color:var(--accent); }
 
   /* engage overlay */
   #engage{ position:fixed; inset:0; z-index:40; background:rgba(5,7,10,0.94); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:18px; }
@@ -65,11 +130,36 @@
 <div id="bar">
   <div class="brand disp">Bridge Console<small>UNIFIED DATA WALL</small></div>
   <div class="presets" id="presets"></div>
+  <div class="rail-size" title="Resize side rails">
+    <label>L<input id="rail-left" type="range" min="8" max="28" step="0.5" value="15"><output id="rail-left-val">15%</output></label>
+    <label>R<input id="rail-right" type="range" min="8" max="28" step="0.5" value="15"><output id="rail-right-val">15%</output></label>
+  </div>
+  <div class="media">
+    <input id="media-file" type="file" accept="audio/*,video/*">
+    <button id="media-play">Play</button>
+    <button id="media-restart">Restart</button>
+    <input id="media-seek" class="seek" type="range" min="0" max="1" step="0.001" value="0" title="Playback position">
+    <span class="media-time" id="media-time">0:00 / 0:00</span>
+    <button id="media-audible" class="active">File Audio</button>
+    <button id="media-loop" class="active">Loop</button>
+    <select id="media-effect" title="File pass-through effect">
+      <option value="none">Clean</option>
+      <option value="filter">Filter</option>
+      <option value="delay">Delay</option>
+      <option value="reverb">Reverb</option>
+      <option value="chorus">Chorus</option>
+      <option value="flange">Flange</option>
+      <option value="pitch">Pitch</option>
+    </select>
+    <input id="media-amount" type="range" min="0" max="1" step="0.01" value="0.5" title="Effect amount">
+    <span class="media-name" id="media-name">no file</span>
+  </div>
   <div class="spacer"></div>
   <a class="link" href="launcher.html">MULTI-WINDOW LAUNCHER →</a>
 </div>
 
 <div id="console"></div>
+<div id="panel-pop" aria-hidden="true"></div>
 
 <div id="engage">
   <div class="title disp">Bridge Console</div>
@@ -101,19 +191,123 @@
   const PRESETS = {
     solo: { label:'Solo', k:1, order:['nav-core','comms-array','reactor','threat-matrix','anomaly','life-support','cryo-bay','subspace','ai-core','hull-cameras'] },
     duo:  { label:'Duo',  k:2, order:['subspace','ai-core','nav-core','reactor','threat-matrix','hull-cameras','comms-array','anomaly','life-support','cryo-bay'] },
-    trio: { label:'Trio', k:3, order:['nav-core','reactor','threat-matrix','hull-cameras','ai-core','subspace','comms-array','anomaly','life-support','cryo-bay'] }
+    trio: { label:'Trio', k:3, order:['nav-core','reactor','threat-matrix','hull-cameras','ai-core','subspace','comms-array','anomaly','life-support','cryo-bay'] },
+    grid: { label:'Grid', k:N, grid:true, cols:4, rows:3, order:['comms-array','nav-core','reactor','threat-matrix','anomaly','life-support','cryo-bay','subspace','ai-core','hull-cameras'] }
   };
 
-  const CENTER_VOL = 0.85, RAIL_VOL = 0.28;
-  const CENTER_FPS = 60, RAIL_FPS = 12;
-  const RAIL_W = 15, GAP = 0.7; // percent
+  const DEFAULT_VOL = 0.85;
+  const CENTER_FPS = 60, RAIL_FPS = 12, GRID_FPS = 24;
+  const GAP = 0.7; // percent
 
   const consoleEl = document.getElementById('console');
+  const railLeftInput = document.getElementById('rail-left');
+  const railRightInput = document.getElementById('rail-right');
+  const railLeftVal = document.getElementById('rail-left-val');
+  const railRightVal = document.getElementById('rail-right-val');
   const panes = {}; // id -> { el, iframe, slider, module, loaded }
+  const emptySlots = [];
   let assignment = PRESETS.solo.order.slice();
   let preset = 'solo';
+  let leftRailW = 15;
+  let rightRailW = 15;
   let booted = false;
   let loadedCount = 0;
+  let mediaFile = null;
+  const mediaState = { audible:true, loop:true, effect:'none', amount:0.5, seeking:false };
+  const PANEL_CONTROLS = {
+    'comms-array': [
+      { key:'beaconPitch', label:'Beacon Pitch', min:0.35, max:2.5, step:0.01, value:1, kind:'x' },
+      { key:'beaconGain', label:'Beacon Gain', min:0, max:1.6, step:0.01, value:1, kind:'x' },
+      { key:'spikeThreshold', label:'Spike Thresh', min:0.15, max:0.95, step:0.01, value:0.55, kind:'percent' },
+      { key:'pingRate', label:'Ping Gap', min:0.08, max:1.2, step:0.01, value:0.4, kind:'sec' },
+      { key:'pingPitch', label:'Ping Pitch', min:0.5, max:3, step:0.01, value:1.5, kind:'x' },
+      { key:'pingGain', label:'Ping Gain', min:0, max:1.4, step:0.01, value:1, kind:'x' },
+      { key:'pingDuration', label:'Ping Length', min:0.05, max:0.8, step:0.01, value:0.25, kind:'sec' }
+    ],
+    'nav-core': [
+      { key:'routeSpeed', label:'Route Speed', min:0.25, max:3, step:0.05, value:1, kind:'x' },
+      { key:'oscPitch', label:'Osc Pitch', min:28, max:420, step:1, value:92, kind:'hz' },
+      { key:'cutoff', label:'Lowpass', min:180, max:12000, step:10, value:2600, kind:'hz' },
+      { key:'pwmRate', label:'PWM Rate', min:0.02, max:1.2, step:0.01, value:0.12, kind:'hz' },
+      { key:'pwmDepth', label:'PWM Depth', min:0, max:0.46, step:0.01, value:0.28, kind:'percent' },
+      { key:'modLayer', label:'PWM Layer', min:0, max:1, step:0.01, value:0.72, kind:'percent' },
+      { key:'steadyLayer', label:'Steady Layer', min:0, max:1, step:0.01, value:0.52, kind:'percent' },
+      { key:'compThreshold', label:'Comp Thresh', min:-60, max:-6, step:1, value:-24, kind:'db' },
+      { key:'compRatio', label:'Comp Ratio', min:1, max:20, step:0.5, value:8, kind:'ratio' },
+      { key:'compAttack', label:'Comp Attack', min:0.001, max:0.08, step:0.001, value:0.012, kind:'ms' },
+      { key:'compRelease', label:'Comp Release', min:0.03, max:0.8, step:0.01, value:0.24, kind:'ms' },
+      { key:'outputTrim', label:'Output Trim', min:0.2, max:1.2, step:0.01, value:0.72, kind:'percent' },
+      { key:'chimeGain', label:'Chime Level', min:0, max:1, step:0.01, value:0.38, kind:'percent' }
+    ],
+    'reactor': [
+      { key:'breachThreshold', label:'Breach Thresh', min:0.55, max:0.98, step:0.01, value:0.85, kind:'percent' },
+      { key:'klaxonRate', label:'Klaxon Gap', min:0.25, max:2.5, step:0.01, value:1.1, kind:'sec' },
+      { key:'klaxonPitch', label:'Klaxon Pitch', min:0.35, max:2.4, step:0.01, value:1, kind:'x' },
+      { key:'klaxonGain', label:'Klaxon Gain', min:0, max:1.5, step:0.01, value:1, kind:'x' },
+      { key:'breachPitch', label:'Breach Drone', min:35, max:240, step:1, value:70, kind:'hz' },
+      { key:'breachGain', label:'Drone Gain', min:0, max:1.2, step:0.01, value:0.4, kind:'percent' }
+    ],
+    'threat-matrix': [
+      { key:'sweepSpeed', label:'Sweep Speed', min:0.25, max:3, step:0.05, value:1, kind:'x' },
+      { key:'threatCount', label:'Threats', min:1, max:12, step:1, value:5, kind:'int' },
+      { key:'driftSpeed', label:'Drift Speed', min:0, max:2, step:0.05, value:0.35, kind:'x' },
+      { key:'basePitch', label:'Initial Pitch', min:60, max:900, step:5, value:220, kind:'hz' },
+      { key:'threatPitchSpread', label:'Threat Pitch', min:0, max:320, step:5, value:180, kind:'hz' },
+      { key:'pingGain', label:'Ping Gain', min:0, max:1.5, step:0.01, value:1, kind:'x' },
+      { key:'voiceGain', label:'Voice Gain', min:0, max:1.5, step:0.01, value:1, kind:'x' },
+      { key:'hitDuration', label:'Hit Length', min:0.04, max:0.5, step:0.01, value:0.14, kind:'sec' }
+    ],
+    'anomaly': [
+      { key:'transientThreshold', label:'Trigger Sens', min:0.7, max:3.2, step:0.05, value:1.8, kind:'x' },
+      { key:'burstPitch', label:'Burst Pitch', min:120, max:1000, step:5, value:300, kind:'hz' },
+      { key:'burstSpread', label:'Pitch Spread', min:0, max:900, step:5, value:500, kind:'hz' },
+      { key:'burstGain', label:'Burst Gain', min:0, max:1.4, step:0.01, value:1, kind:'x' },
+      { key:'rumbleChance', label:'Rumble Odds', min:0, max:1, step:0.01, value:0.35, kind:'percent' },
+      { key:'rumblePitch', label:'Rumble Pitch', min:22, max:140, step:1, value:42, kind:'hz' },
+      { key:'rumbleGain', label:'Rumble Gain', min:0, max:1.4, step:0.01, value:1, kind:'x' }
+    ],
+    'life-support': [
+      { key:'alarmThreshold', label:'Alarm Thresh', min:0.05, max:0.2, step:0.01, value:0.11, kind:'percent' },
+      { key:'zoneVoicePitch', label:'Zone Pitch', min:180, max:1000, step:5, value:520, kind:'hz' },
+      { key:'zoneVoiceGain', label:'Voice Gain', min:0, max:1.4, step:0.01, value:1, kind:'x' },
+      { key:'chimePitch', label:'Chime Pitch', min:220, max:1400, step:5, value:660, kind:'hz' },
+      { key:'chimeGap', label:'Chime Gap', min:0.4, max:5, step:0.05, value:2.4, kind:'sec' },
+      { key:'chimeGain', label:'Chime Gain', min:0, max:1.4, step:0.01, value:1, kind:'x' }
+    ],
+    'cryo-bay': [
+      { key:'heartPitch', label:'Pulse Pitch', min:280, max:2600, step:10, value:1400, kind:'hz' },
+      { key:'heartGain', label:'Pulse Gain', min:0, max:1.5, step:0.01, value:1, kind:'x' },
+      { key:'heartDuration', label:'Pulse Length', min:0.03, max:0.35, step:0.01, value:0.09, kind:'sec' },
+      { key:'bpmScale', label:'BPM Scale', min:0.4, max:2, step:0.01, value:1, kind:'x' },
+      { key:'spatialPulseGain', label:'Spatial Gain', min:0, max:1.5, step:0.01, value:1, kind:'x' }
+    ],
+    'subspace': [
+      { key:'orbitBase', label:'Orbit Base', min:30, max:240, step:1, value:80, kind:'hz' },
+      { key:'orbitTrack', label:'Orbit Track', min:0, max:3, step:0.01, value:1.2, kind:'x' },
+      { key:'orbitGain', label:'Orbit Gain', min:0, max:1.4, step:0.01, value:1, kind:'x' },
+      { key:'harmonicBase', label:'Harm Base', min:35, max:220, step:1, value:90, kind:'hz' },
+      { key:'harmonicGain', label:'Harm Gain', min:0, max:1.5, step:0.01, value:1, kind:'x' },
+      { key:'harmonicGap', label:'Harm Gap', min:0.12, max:1.5, step:0.01, value:0.5, kind:'sec' }
+    ],
+    'ai-core': [
+      { key:'blipPitch', label:'Blip Pitch', min:0.35, max:2.8, step:0.01, value:1, kind:'x' },
+      { key:'blipGain', label:'Blip Gain', min:0, max:1.6, step:0.01, value:1, kind:'x' },
+      { key:'blipGap', label:'Blip Gap', min:0.02, max:0.35, step:0.01, value:0.08, kind:'sec' },
+      { key:'voiceGain', label:'Voice Gain', min:0, max:1.5, step:0.01, value:1, kind:'x' },
+      { key:'cascadeDepth', label:'Cascade Depth', min:1, max:5, step:1, value:3, kind:'int' },
+      { key:'triggerSensitivity', label:'Trigger Sens', min:0.1, max:0.8, step:0.01, value:0.25, kind:'percent' }
+    ],
+    'hull-cameras': [
+      { key:'proximity', label:'Proximity', min:3, max:13, step:0.1, value:7, kind:'int' },
+      { key:'impactPitch', label:'Impact Pitch', min:120, max:900, step:5, value:300, kind:'hz' },
+      { key:'closenessPitch', label:'Near Pitch', min:0, max:900, step:5, value:400, kind:'hz' },
+      { key:'impactGain', label:'Impact Gain', min:0, max:1.6, step:0.01, value:1, kind:'x' },
+      { key:'impactDuration', label:'Impact Length', min:0.05, max:0.6, step:0.01, value:0.2, kind:'sec' },
+      { key:'spatialGain', label:'Spatial Gain', min:0, max:1.5, step:0.01, value:1, kind:'x' }
+    ]
+  };
+  const panelPop = document.getElementById('panel-pop');
+  let activePanelId = null;
 
   // Build the persistent panes (created once, never reparented → never reload).
   MODULES.forEach(m => {
@@ -122,20 +316,36 @@
     bar.innerHTML = `<span class="swatch" style="background:${m.accent}"></span>`+
       `<span class="nm">${m.title}</span><span class="sp"></span>`+
       `<button class="promote" title="Promote to center">⤢</button>`+
-      `<input type="range" min="0" max="1" step="0.01" value="${CENTER_VOL}">`;
+      `<button class="panelctl" title="Panel controls">CTL</button>`+
+      `<span class="mini-label">VOL</span><input class="vol" title="Module volume" type="range" min="0" max="1" step="0.01" value="${DEFAULT_VOL}">`+
+      `<span class="mini-label">RX</span><input class="react" title="Audio reactivity amount" type="range" min="0" max="2" step="0.01" value="1">`;
     const iframe = document.createElement('iframe');
+    const inlinePanel = document.createElement('div');
+    inlinePanel.className = 'inline-panel';
     iframe.src = m.file + '?embed=1';
     iframe.setAttribute('scrolling','no');
     iframe.addEventListener('load', () => { onPaneLoad(m.id); });
-    el.appendChild(bar); el.appendChild(iframe);
+    el.appendChild(bar); el.appendChild(iframe); el.appendChild(inlinePanel);
     consoleEl.appendChild(el);
 
-    const slider = bar.querySelector('input');
+    const slider = bar.querySelector('input.vol');
+    const reactSlider = bar.querySelector('input.react');
+    const panelBtn = bar.querySelector('.panelctl');
     slider.addEventListener('input', () => setVolume(m.id, parseFloat(slider.value)));
+    reactSlider.addEventListener('input', () => setReactivity(m.id, parseFloat(reactSlider.value)));
+    panelBtn.addEventListener('click', (ev) => { ev.stopPropagation(); togglePanelPopover(m.id, panelBtn); });
     bar.querySelector('.promote').addEventListener('click', () => promote(m.id));
 
-    panes[m.id] = { el, iframe, slider, module:m, loaded:false, vol:CENTER_VOL };
+    panes[m.id] = { el, iframe, slider, reactSlider, panelBtn, inlinePanel, module:m, loaded:false, vol:DEFAULT_VOL, reactivity:1, panel:defaultPanelConfig(m.id) };
   });
+
+  for(let i=0; i<2; i++){
+    const slot = document.createElement('div');
+    slot.className = 'empty-slot';
+    slot.textContent = 'Utility Slot';
+    consoleEl.appendChild(slot);
+    emptySlots.push(slot);
+  }
 
   function onPaneLoad(id){
     const p = panes[id];
@@ -149,14 +359,19 @@
   }
 
   // ---- layout geometry ----
+  function isGridPreset(){
+    return !!(PRESETS[preset] && PRESETS[preset].grid);
+  }
+
   function computeRects(){
+    if(isGridPreset()) return computeGridRects();
     const k = PRESETS[preset].k;
     const featured = assignment.slice(0, k);
     const rest = assignment.slice(k);
     const rects = {}; // id -> {x,y,w,h,role}
 
     // center region
-    const cx0 = RAIL_W + GAP, cx1 = 100 - RAIL_W - GAP, cw = cx1 - cx0;
+    const cx0 = leftRailW + GAP, cx1 = 100 - rightRailW - GAP, cw = Math.max(24, cx1 - cx0);
     if(k === 1){
       rects[featured[0]] = { x:cx0, y:0, w:cw, h:100, role:'center' };
     } else if(k === 2){
@@ -173,48 +388,216 @@
     // rails: split remainder left/right
     const ln = Math.ceil(rest.length/2);
     const left = rest.slice(0, ln), right = rest.slice(ln);
-    placeRail(left, 'left', rects);
-    placeRail(right, 'right', rects);
+    placeRail(left, 'left', leftRailW, rects);
+    placeRail(right, 'right', rightRailW, rects);
     return rects;
   }
-  function placeRail(list, side, rects){
+
+  function computeGridRects(){
+    const p = PRESETS[preset];
+    const cols = p.cols || 4, rows = p.rows || 3;
+    const order = p.order || assignment;
+    const cellW = (100 - (cols - 1) * GAP) / cols;
+    const cellH = (100 - (rows - 1) * GAP) / rows;
+    const rects = {};
+    for(let i=0; i<cols*rows; i++){
+      const id = order[i];
+      if(!id) continue;
+      const col = i % cols, row = Math.floor(i / cols);
+      rects[id] = { x:col*(cellW+GAP), y:row*(cellH+GAP), w:cellW, h:cellH, role:'grid' };
+    }
+    return rects;
+  }
+
+  function gridEmptyRects(){
+    if(!isGridPreset()) return [];
+    const p = PRESETS[preset];
+    const cols = p.cols || 4, rows = p.rows || 3;
+    const cellW = (100 - (cols - 1) * GAP) / cols;
+    const cellH = (100 - (rows - 1) * GAP) / rows;
+    const start = (p.order || assignment).length;
+    const rects = [];
+    for(let i=start; i<cols*rows; i++){
+      const col = i % cols, row = Math.floor(i / cols);
+      rects.push({ x:col*(cellW+GAP), y:row*(cellH+GAP), w:cellW, h:cellH });
+    }
+    return rects;
+  }
+  function placeRail(list, side, railW, rects){
     const n = list.length; if(!n) return;
-    const x = side === 'left' ? 0 : (100 - RAIL_W);
+    const x = side === 'left' ? 0 : (100 - railW);
     const h = (100 - (n-1)*GAP)/n;
     list.forEach((id, i) => {
-      rects[id] = { x:x + 0.2, y:i*(h + GAP), w:RAIL_W - 0.4, h, role:'rail' };
+      rects[id] = { x:x + 0.2, y:i*(h + GAP), w:Math.max(6, railW - 0.4), h, role:'rail' };
     });
   }
 
   function layout(){
     const rects = computeRects();
+    const grid = isGridPreset();
+    document.body.classList.toggle('grid-view', grid);
+    if(grid) closePanelPopover();
     MODULES.forEach(m => {
       const p = panes[m.id], r = rects[m.id];
       p.el.style.left = r.x + '%'; p.el.style.top = r.y + '%';
       p.el.style.width = r.w + '%'; p.el.style.height = r.h + '%';
-      const wasCenter = p.el.classList.contains('center');
       const isCenter = r.role === 'center';
       p.el.classList.toggle('center', isCenter);
-      p.el.classList.toggle('rail', !isCenter);
-      // reset volume to role default when the role changes
-      if(wasCenter !== isCenter){
-        p.vol = isCenter ? CENTER_VOL : RAIL_VOL;
-        p.slider.value = p.vol;
-      }
-      configure(m.id, isCenter ? CENTER_FPS : RAIL_FPS, p.vol);
+      p.el.classList.toggle('rail', !isCenter && !grid);
+      p.el.classList.toggle('grid', grid);
+      configure(m.id, grid ? GRID_FPS : (isCenter ? CENTER_FPS : RAIL_FPS), p.vol, grid ? false : !isCenter);
     });
+    const empties = gridEmptyRects();
+    emptySlots.forEach((slot, i) => {
+      const r = empties[i];
+      if(r){
+        slot.style.left = r.x + '%'; slot.style.top = r.y + '%';
+        slot.style.width = r.w + '%'; slot.style.height = r.h + '%';
+      }
+    });
+    if(grid) renderAllInlinePanels();
     savePrefs();
   }
 
-  function configure(id, fps, volume){
+  function configure(id, fps, volume, minimal){
     const p = panes[id];
-    try { if(p.iframe.contentWindow && p.iframe.contentWindow.__shipConfig) p.iframe.contentWindow.__shipConfig({ fps, volume }); } catch(e){}
+    try { if(p.iframe.contentWindow && p.iframe.contentWindow.__shipConfig) p.iframe.contentWindow.__shipConfig({ fps, volume, minimal, reactivity:p.reactivity, panel:p.panel }); } catch(e){}
+    try { if(p.iframe.contentWindow && p.iframe.contentWindow.__shipMediaConfig) p.iframe.contentWindow.__shipMediaConfig(paneMediaPayload(id)); } catch(e){}
   }
   function setVolume(id, v){
     const p = panes[id]; p.vol = v;
-    configure(id, p.el.classList.contains('center') ? CENTER_FPS : RAIL_FPS, v);
+    const center = p.el.classList.contains('center');
+    configure(id, isGridPreset() ? GRID_FPS : (center ? CENTER_FPS : RAIL_FPS), v, isGridPreset() ? false : !center);
     savePrefs();
   }
+  function setReactivity(id, v){
+    const p = panes[id]; p.reactivity = v;
+    const center = p.el.classList.contains('center');
+    configure(id, isGridPreset() ? GRID_FPS : (center ? CENTER_FPS : RAIL_FPS), p.vol, isGridPreset() ? false : !center);
+    savePrefs();
+  }
+  function defaultPanelConfig(id){
+    const cfg = {};
+    (PANEL_CONTROLS[id] || []).forEach(ctrl => { cfg[ctrl.key] = ctrl.value; });
+    return cfg;
+  }
+
+  function setPanelControl(id, key, value){
+    const p = panes[id];
+    p.panel[key] = value;
+    const center = p.el.classList.contains('center');
+    configure(id, isGridPreset() ? GRID_FPS : (center ? CENTER_FPS : RAIL_FPS), p.vol, isGridPreset() ? false : !center);
+    savePrefs();
+  }
+
+  function togglePanelPopover(id, anchor){
+    if(isGridPreset()){
+      panes[id].inlinePanel.scrollIntoView({ block:'nearest', inline:'nearest' });
+      return;
+    }
+    if(activePanelId === id && panelPop.classList.contains('open')){
+      closePanelPopover();
+      return;
+    }
+    activePanelId = id;
+    renderPanelPopover(id);
+    document.querySelectorAll('.pane-bar .panelctl').forEach(b => b.classList.remove('active'));
+    anchor.classList.add('active');
+    const r = anchor.getBoundingClientRect();
+    const left = Math.min(window.innerWidth - 304, Math.max(8, r.left - 210));
+    const top = Math.min(window.innerHeight - 250, Math.max(54, r.bottom + 7));
+    panelPop.style.left = left + 'px';
+    panelPop.style.top = top + 'px';
+    panelPop.classList.add('open');
+    panelPop.setAttribute('aria-hidden','false');
+  }
+
+  function closePanelPopover(){
+    activePanelId = null;
+    panelPop.classList.remove('open');
+    panelPop.setAttribute('aria-hidden','true');
+    document.querySelectorAll('.pane-bar .panelctl').forEach(b => b.classList.remove('active'));
+  }
+
+  function renderPanelPopover(id){
+    const p = panes[id];
+    panelPop.innerHTML =
+      `<div class="head"><div class="title">Panel Controls</div><div class="sub">${p.module.title}</div></div>`+
+      panelControlFields(id)+
+      `<div class="hint">These controls alter the module's own simulation parameters, not a generic sound effect chain.</div>`+
+      `<div class="actions">${id === 'threat-matrix' ? '<button data-action="randomize">Randomize</button>' : ''}<button data-action="reset">Reset</button><button data-action="close">Close</button></div>`;
+    bindPanelControls(panelPop, id, true);
+  }
+
+  function panelControlFields(id){
+    const p = panes[id];
+    const controls = PANEL_CONTROLS[id] || [];
+    return controls.map(ctrl =>
+      `<label><span>${ctrl.label}</span><input data-key="${ctrl.key}" data-kind="${ctrl.kind}" type="range" min="${ctrl.min}" max="${ctrl.max}" step="${ctrl.step}" value="${p.panel[ctrl.key]}"><output>${formatPanelValue(ctrl.kind, p.panel[ctrl.key])}</output></label>`
+    ).join('');
+  }
+
+  function renderInlinePanel(id){
+    const p = panes[id];
+    p.inlinePanel.innerHTML =
+      `<div class="head"><div class="title">Controls</div><div class="sub">${p.module.title}</div></div>`+
+      panelControlFields(id)+
+      `<div class="actions">${id === 'threat-matrix' ? '<button data-action="randomize">Randomize</button>' : ''}<button data-action="reset">Reset</button></div>`;
+    bindPanelControls(p.inlinePanel, id, false);
+  }
+
+  function renderAllInlinePanels(){
+    MODULES.forEach(m => renderInlinePanel(m.id));
+  }
+
+  function bindPanelControls(root, id, allowClose){
+    const p = panes[id];
+    root.querySelectorAll('input[type=range]').forEach(input => {
+      input.addEventListener('input', () => {
+        const kind = input.dataset.kind;
+        const raw = parseFloat(input.value);
+        const value = kind === 'int' ? Math.round(raw) : raw;
+        input.value = String(value);
+        input.nextElementSibling.textContent = formatPanelValue(kind, value);
+        setPanelControl(id, input.dataset.key, value);
+      });
+    });
+    root.querySelector('[data-action=reset]').addEventListener('click', () => {
+      panes[id].panel = defaultPanelConfig(id);
+      if(root === panelPop) renderPanelPopover(id);
+      renderInlinePanel(id);
+      const center = p.el.classList.contains('center');
+      configure(id, isGridPreset() ? GRID_FPS : (center ? CENTER_FPS : RAIL_FPS), p.vol, isGridPreset() ? false : !center);
+      savePrefs();
+    });
+    const randomize = root.querySelector('[data-action=randomize]');
+    if(randomize){
+      randomize.addEventListener('click', () => {
+        setPanelControl(id, 'randomizeNonce', Date.now());
+      });
+    }
+    const close = root.querySelector('[data-action=close]');
+    if(allowClose && close) close.addEventListener('click', closePanelPopover);
+  }
+
+  function formatPanelValue(kind, value){
+    if(kind === 'percent') return Math.round(value*100);
+    if(kind === 'x') return Number(value).toFixed(value < 10 ? 1 : 0) + 'x';
+    if(kind === 'int') return String(Math.round(value));
+    if(kind === 'hz') return Math.round(value);
+    if(kind === 'db') return Math.round(value) + 'dB';
+    if(kind === 'ratio') return Number(value).toFixed(value < 10 ? 1 : 0) + ':1';
+    if(kind === 'ms') return Math.round(value * 1000) + 'ms';
+    if(kind === 'sec') return Number(value).toFixed(value < 1 ? 2 : 1) + 's';
+    return String(value);
+  }
+
+  document.addEventListener('click', (ev) => {
+    if(!panelPop.classList.contains('open')) return;
+    if(panelPop.contains(ev.target) || ev.target.closest('.pane-bar .panelctl')) return;
+    closePanelPopover();
+  });
+  window.addEventListener('resize', closePanelPopover);
 
   function promote(id){
     const i = assignment.indexOf(id);
@@ -230,6 +613,24 @@
     layout();
   }
 
+  function updateRailControls(){
+    railLeftInput.value = String(leftRailW);
+    railRightInput.value = String(rightRailW);
+    railLeftVal.textContent = leftRailW.toFixed(leftRailW % 1 ? 1 : 0) + '%';
+    railRightVal.textContent = rightRailW.toFixed(rightRailW % 1 ? 1 : 0) + '%';
+  }
+
+  function setRailWidth(side, value){
+    const v = Math.max(8, Math.min(28, Number(value) || 15));
+    if(side === 'left') leftRailW = v;
+    else rightRailW = v;
+    updateRailControls();
+    layout();
+  }
+
+  railLeftInput.addEventListener('input', () => setRailWidth('left', railLeftInput.value));
+  railRightInput.addEventListener('input', () => setRailWidth('right', railRightInput.value));
+
   // preset buttons
   const presetsEl = document.getElementById('presets');
   Object.keys(PRESETS).forEach(name => {
@@ -240,13 +641,16 @@
 
   // ---- persistence (localStorage) ----
   function savePrefs(){
-    try { localStorage.setItem('shipConsole', JSON.stringify({ preset, assignment, vols: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].vol])) })); } catch(e){}
+    try { localStorage.setItem('shipConsole', JSON.stringify({ preset, assignment, rails:{ left:leftRailW, right:rightRailW }, vols: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].vol])), reacts: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].reactivity])), panels: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].panel])) })); } catch(e){}
   }
   function loadPrefs(){
     try {
       const s = JSON.parse(localStorage.getItem('shipConsole')||'null');
       if(s && s.assignment && s.assignment.length === N){ assignment = s.assignment; preset = s.preset || 'solo'; }
+      if(s && s.rails){ leftRailW = Math.max(8, Math.min(28, Number(s.rails.left) || 15)); rightRailW = Math.max(8, Math.min(28, Number(s.rails.right) || 15)); }
       if(s && s.vols){ MODULES.forEach(m => { if(s.vols[m.id] != null){ panes[m.id].vol = s.vols[m.id]; panes[m.id].slider.value = s.vols[m.id]; } }); }
+      if(s && s.reacts){ MODULES.forEach(m => { if(s.reacts[m.id] != null){ panes[m.id].reactivity = s.reacts[m.id]; panes[m.id].reactSlider.value = s.reacts[m.id]; } }); }
+      if(s && s.panels){ MODULES.forEach(m => { if(s.panels[m.id]) panes[m.id].panel = Object.assign(defaultPanelConfig(m.id), s.panels[m.id]); }); }
     } catch(e){}
   }
 
@@ -260,14 +664,160 @@
       const p = panes[m.id];
       try { if(p.iframe.contentWindow && p.iframe.contentWindow.__shipBoot) p.iframe.contentWindow.__shipBoot(); } catch(e){}
     });
+    if(mediaFile) broadcastMediaFile(mediaFile);
     // apply per-pane fps/volume now that engines exist
     layout();
     document.getElementById('engage').style.display = 'none';
   });
 
+  async function broadcastMediaFile(file){
+    document.getElementById('media-name').textContent = file ? file.name : 'no file';
+    MODULES.forEach(m => {
+      const p = panes[m.id];
+      try {
+        const w = p.iframe.contentWindow;
+        if(w && w.__shipMediaConfig) w.__shipMediaConfig(paneMediaPayload(m.id));
+        if(w && w.__shipLoadMediaFile) w.__shipLoadMediaFile(file);
+      } catch(e){}
+    });
+  }
+
+  function broadcastMediaConfig(){
+    document.getElementById('media-audible').classList.toggle('active', mediaState.audible);
+    document.getElementById('media-audible').textContent = mediaState.audible ? 'File Audio' : 'Muted';
+    document.getElementById('media-loop').classList.toggle('active', mediaState.loop);
+    MODULES.forEach(m => {
+      const p = panes[m.id];
+      try {
+        const w = p.iframe.contentWindow;
+        if(w && w.__shipMediaConfig) w.__shipMediaConfig(paneMediaPayload(m.id));
+      } catch(e){}
+    });
+  }
+
+  function mediaPayload(audibleOverride){
+    const amount = mediaState.amount;
+    const payload = { audible:audibleOverride == null ? mediaState.audible : audibleOverride, loop:mediaState.loop, effect:mediaState.effect };
+    if(mediaState.effect === 'filter'){
+      payload.cutoff = 180 + amount * 15820;
+      payload.resonance = 0.6 + amount * 8;
+    } else if(mediaState.effect === 'delay'){
+      payload.delayTime = 0.06 + amount * 0.74;
+      payload.feedback = 0.12 + amount * 0.58;
+    } else if(mediaState.effect === 'chorus'){
+      payload.modRate = 0.16 + amount * 1.4;
+      payload.modDepth = 0.002 + amount * 0.012;
+    } else if(mediaState.effect === 'flange'){
+      payload.modRate = 0.28 + amount * 3.2;
+      payload.modDepth = 0.0008 + amount * 0.004;
+    } else if(mediaState.effect === 'pitch'){
+      payload.pitch = Math.round(amount * 24 - 12);
+    }
+    return payload;
+  }
+
+  function primaryMediaAudioPaneId(){
+    return assignment[0];
+  }
+
+  function paneMediaPayload(id){
+    return mediaPayload(mediaState.audible && id === primaryMediaAudioPaneId());
+  }
+
+  function broadcastMediaTransport(cmd){
+    MODULES.forEach(m => {
+      const p = panes[m.id];
+      try {
+        const w = p.iframe.contentWindow;
+        if(w && w.__shipMediaTransport) w.__shipMediaTransport(cmd);
+      } catch(e){}
+    });
+  }
+
+  function readPrimaryMediaState(){
+    for(const id of assignment){
+      const p = panes[id];
+      try {
+        const w = p.iframe.contentWindow;
+        if(w && w.__shipMediaState){
+          const state = w.__shipMediaState();
+          if(state && state.loaded) return state;
+        }
+      } catch(e){}
+    }
+    return null;
+  }
+
+  function formatTime(seconds){
+    if(!Number.isFinite(seconds) || seconds <= 0) return '0:00';
+    const s = Math.floor(seconds % 60);
+    const m = Math.floor(seconds / 60) % 60;
+    const h = Math.floor(seconds / 3600);
+    if(h > 0) return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    return m + ':' + String(s).padStart(2,'0');
+  }
+
+  function refreshMediaTransport(){
+    const state = readPrimaryMediaState();
+    const play = document.getElementById('media-play');
+    const seek = document.getElementById('media-seek');
+    const time = document.getElementById('media-time');
+    if(!state){
+      play.textContent = 'Play';
+      if(!mediaState.seeking) seek.value = '0';
+      time.textContent = '0:00 / 0:00';
+      return;
+    }
+    play.textContent = state.playing ? 'Pause' : 'Play';
+    if(!mediaState.seeking) seek.value = state.duration > 0 ? String(Math.max(0, Math.min(1, state.currentTime / state.duration))) : '0';
+    time.textContent = formatTime(state.currentTime) + ' / ' + formatTime(state.duration);
+  }
+
+  document.getElementById('media-file').addEventListener('change', function(){
+    mediaFile = this.files && this.files[0] ? this.files[0] : null;
+    if(mediaFile && booted) broadcastMediaFile(mediaFile);
+    else document.getElementById('media-name').textContent = mediaFile ? mediaFile.name : 'no file';
+  });
+  document.getElementById('media-play').addEventListener('click', function(){
+    broadcastMediaTransport({ action:'toggle' });
+    setTimeout(refreshMediaTransport, 80);
+  });
+  document.getElementById('media-restart').addEventListener('click', function(){
+    broadcastMediaTransport({ action:'restart' });
+    setTimeout(refreshMediaTransport, 80);
+  });
+  document.getElementById('media-seek').addEventListener('input', function(){
+    mediaState.seeking = true;
+    broadcastMediaTransport({ action:'seekRatio', ratio:parseFloat(this.value) });
+  });
+  document.getElementById('media-seek').addEventListener('change', function(){
+    mediaState.seeking = false;
+    broadcastMediaTransport({ action:'seekRatio', ratio:parseFloat(this.value) });
+    setTimeout(refreshMediaTransport, 80);
+  });
+  document.getElementById('media-audible').addEventListener('click', function(){
+    mediaState.audible = !mediaState.audible;
+    broadcastMediaConfig();
+  });
+  document.getElementById('media-loop').addEventListener('click', function(){
+    mediaState.loop = !mediaState.loop;
+    broadcastMediaConfig();
+  });
+  document.getElementById('media-effect').addEventListener('change', function(){
+    mediaState.effect = this.value;
+    broadcastMediaConfig();
+  });
+  document.getElementById('media-amount').addEventListener('input', function(){
+    mediaState.amount = parseFloat(this.value);
+    broadcastMediaConfig();
+  });
+
   // init
   loadPrefs();
+  updateRailControls();
   setPreset(preset);
+  broadcastMediaConfig();
+  setInterval(refreshMediaTransport, 500);
 })();
 </script>
 </body>

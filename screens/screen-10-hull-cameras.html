@@ -19,7 +19,7 @@
   html,body{ margin:0; width:100%; height:100%; background:var(--charcoal); color:var(--chrome);
     font-family:'Cousine','Space Mono',monospace; overflow:hidden; }
   .disp{ font-family:'Titillium Web',sans-serif; font-weight:600; }
-  #app{ position:fixed; inset:0; display:grid; grid-template-rows:40px 1fr 38px; }
+  #app{ position:fixed; inset:0; display:grid; grid-template-rows:40px minmax(0,1fr) clamp(64px, 10vh, 92px); }
   #topbar{ display:flex; align-items:center; justify-content:space-between; padding:0 18px; background:#0E0F10; border-bottom:1px solid var(--line); }
   #topbar .id{ font-family:'Titillium Web',sans-serif; font-weight:700; font-size:16px; letter-spacing:0.12em; color:var(--green); }
   #topbar .sub{ font-size:11px; color:var(--chrome); letter-spacing:0.1em; margin-left:10px; opacity:0.6; }
@@ -28,23 +28,23 @@
   #topbar .dot.live{ background:var(--green); box-shadow:0 0 6px var(--green); }
   #topbar .dot.synth{ background:var(--amber); box-shadow:0 0 6px var(--amber); }
 
-  #feeds{ position:relative; }
+  #feeds{ position:relative; min-height:0; }
   #feeds canvas{ display:block; width:100%; height:100%; }
   /* HUD overlay grid */
   #hud{ position:absolute; inset:0; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; pointer-events:none; }
-  .cell{ position:relative; border:1px solid rgba(57,255,106,0.14); overflow:hidden; }
+  .cell{ position:relative; border:1px solid rgba(57,255,106,calc(0.14 + var(--audio-hit,0) * 0.48)); overflow:hidden; }
   .cell .label{ position:absolute; top:8px; left:10px; font-size:11px; color:var(--green); letter-spacing:0.12em; text-shadow:0 0 4px rgba(57,255,106,0.5); }
   .cell .ts{ position:absolute; top:8px; right:10px; font-size:10px; color:var(--green); opacity:0.75; }
   .cell .rec{ position:absolute; bottom:8px; left:10px; font-size:10px; color:var(--red); display:flex; align-items:center; gap:5px; }
   .cell .rec .bd{ width:7px; height:7px; border-radius:50%; background:var(--red); }
   .cell .alert{ position:absolute; bottom:8px; right:10px; font-size:10px; color:var(--red); letter-spacing:0.1em; opacity:0; }
   .cell .cross{ position:absolute; top:50%; left:50%; width:26px; height:26px; transform:translate(-50%,-50%); }
-  .cell .cross::before,.cell .cross::after{ content:''; position:absolute; background:rgba(57,255,106,0.6); }
+  .cell .cross::before,.cell .cross::after{ content:''; position:absolute; background:rgba(57,255,106,calc(0.45 + var(--audio-hit,0) * 0.5)); box-shadow:0 0 calc(4px + var(--audio-hit,0) * 12px) rgba(57,255,106,0.45); }
   .cell .cross::before{ left:50%; top:0; width:1px; height:100%; transform:translateX(-50%); }
   .cell .cross::after{ top:50%; left:0; height:1px; width:100%; transform:translateY(-50%); }
-  #scanlines{ position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(0deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,0.12) 3px); mix-blend-mode:multiply; }
+  #scanlines{ position:absolute; inset:0; pointer-events:none; opacity:calc(0.65 + var(--audio-hit,0) * 0.35); background:repeating-linear-gradient(0deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,calc(0.1 + var(--audio-hit,0) * 0.16)) 3px); mix-blend-mode:multiply; }
 
-  #spectral{ position:relative; border-top:1px solid var(--line); background:#0E0F10; }
+  #spectral{ position:relative; min-height:0; border-top:1px solid var(--line); background:#0E0F10; }
   #spectral canvas{ display:block; width:100%; height:100%; }
   #spectral .lbl{ position:absolute; top:4px; left:16px; font-size:9px; color:var(--chrome); opacity:0.6; letter-spacing:0.14em; }
 
@@ -62,6 +62,14 @@
   #boot-btn{ font-family:'Titillium Web',sans-serif; font-weight:700; font-size:15px; letter-spacing:0.08em; background:transparent; border:1px solid var(--green); color:var(--green); padding:13px 32px; cursor:pointer; }
   #boot-btn:hover{ background:var(--green); color:var(--charcoal); }
   .hidden{ display:none !important; }
+
+  @media (max-height: 560px){
+    #app{ grid-template-rows:34px minmax(0,1fr) 58px; }
+    #topbar{ padding:0 12px; }
+    #topbar .id{ font-size:14px; }
+    #topbar .sub, #topbar .mode{ font-size:10px; }
+    #spectral .lbl{ top:3px; left:10px; font-size:8px; }
+  }
 </style>
 </head>
 <body>
@@ -98,6 +106,17 @@
   'use strict';
   const engine = new ShipAudioEngine({ fftSize: 2048, smoothing: 0.75 });
   let spatialEnabled=true, standardEnabled=true;
+  const soundCfg = { proximity:7, impactPitch:300, closenessPitch:400, impactGain:1, impactDuration:0.2, spatialGain:1 };
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, Number(v))); }
+  window.__shipPanelConfig = function(cfg){
+    if(!cfg) return;
+    if(cfg.proximity != null) soundCfg.proximity = clamp(cfg.proximity, 3, 13);
+    if(cfg.impactPitch != null) soundCfg.impactPitch = clamp(cfg.impactPitch, 120, 900);
+    if(cfg.closenessPitch != null) soundCfg.closenessPitch = clamp(cfg.closenessPitch, 0, 900);
+    if(cfg.impactGain != null) soundCfg.impactGain = clamp(cfg.impactGain, 0, 1.6);
+    if(cfg.impactDuration != null) soundCfg.impactDuration = clamp(cfg.impactDuration, 0.05, 0.6);
+    if(cfg.spatialGain != null) soundCfg.spatialGain = clamp(cfg.spatialGain, 0, 1.5);
+  };
   document.getElementById('toggle-spatial').addEventListener('click', function(){ spatialEnabled=!spatialEnabled; this.classList.toggle('on',spatialEnabled); });
   document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
   document.getElementById('boot-btn').addEventListener('click', async function(){
@@ -132,7 +151,7 @@
   renderer.autoClear=true;
   const scene=new THREE.Scene();
   scene.fog=new THREE.FogExp2(0x070808,0.02);
-  scene.add(new THREE.AmbientLight(0x0e1a12,0.8));
+  const ambient=new THREE.AmbientLight(0x0e1a12,0.8); scene.add(ambient);
   const key=new THREE.DirectionalLight(0xffffff,1.5); key.position.set(6,10,8); scene.add(key);
   const fill=new THREE.PointLight(0x39FF6A,0.5,40); fill.position.set(-8,-4,-6); scene.add(fill);
 
@@ -141,11 +160,20 @@
   scene.add(hull);
   const hullRing=new THREE.Mesh(new THREE.TorusGeometry(1.8,0.03,8,48), new THREE.MeshBasicMaterial({ color:0x39FF6A, transparent:true, opacity:0.3 }));
   scene.add(hullRing);
+  const audioRings=[2.5,3.4,4.4].map((r,i)=>{
+    const ring=new THREE.Mesh(
+      new THREE.TorusGeometry(r,0.018,8,64),
+      new THREE.MeshBasicMaterial({ color:i===1?0xE0A458:0x39FF6A, transparent:true, opacity:0.08 })
+    );
+    ring.rotation.x=Math.PI/2;
+    scene.add(ring);
+    return ring;
+  });
 
   // debris field
   const DEBRIS=20; const debris=[];
   for(let i=0;i<DEBRIS;i++){
-    const m=new THREE.Mesh(new THREE.IcosahedronGeometry(0.25+Math.random()*0.5, 0), new THREE.MeshStandardMaterial({ color:0x8a8f92, metalness:0.4, roughness:0.7, flatShading:true }));
+    const m=new THREE.Mesh(new THREE.IcosahedronGeometry(0.25+Math.random()*0.5, 0), new THREE.MeshStandardMaterial({ color:0x8a8f92, emissive:0x39FF6A, emissiveIntensity:0, metalness:0.4, roughness:0.7, flatShading:true }));
     resetDebris(m, true);
     scene.add(m);
     debris.push({ mesh:m, vel:new THREE.Vector3((Math.random()-0.5)*0.02,(Math.random()-0.5)*0.02,(Math.random()-0.5)*0.02),
@@ -162,6 +190,7 @@
 
   function resize(){
     const w=feedsEl.clientWidth, h=feedsEl.clientHeight;
+    if(!w || !h) return;
     renderer.setSize(w,h,false);
     const half=Math.max(w/2, h/2), aspect=(w/2)/Math.max(h/2,1);
     FEEDS.forEach(f=>{ f.cam.aspect=aspect; f.cam.updateProjectionMatrix(); });
@@ -172,46 +201,90 @@
   // ---------- shared spectral strip ----------
   const specEl=document.getElementById('spectral');
   const specCanvas=document.createElement('canvas'); specEl.appendChild(specCanvas); const specCtx=specCanvas.getContext('2d');
-  function resizeSpectral(){ specCanvas.width=specEl.clientWidth; specCanvas.height=specEl.clientHeight; }
+  function resizeSpectral(){
+    const w=specEl.clientWidth, h=specEl.clientHeight;
+    if(!w || !h) return;
+    specCanvas.width=w; specCanvas.height=h;
+  }
   function drawSpectral(freq){
     const w=specCanvas.width,h=specCanvas.height; if(!w||!h) return;
     specCtx.clearRect(0,0,w,h);
     for(let x=0;x<w;x++){ const idx=Math.floor(x/w*freq.length*0.6); const v=freq[idx]/255; specCtx.fillStyle=`rgba(57,255,106,${0.15+v*0.7})`; specCtx.fillRect(x, h-v*h, 1, v*h); }
   }
+  function bandAvg(freq, lo, hi){
+    const start=Math.max(0, Math.floor(freq.length*lo));
+    const end=Math.min(freq.length, Math.max(start+1, Math.floor(freq.length*hi)));
+    let sum=0;
+    for(let i=start;i<end;i++) sum+=freq[i];
+    return sum/((end-start)*255);
+  }
 
   // ---------- loop ----------
   let running=false;
   const PROX=4.5;
-  function startAll(){ resize(); running=true; requestAnimationFrame(loop); }
+  function resizeSoon(){
+    resize();
+    setTimeout(resize, 80);
+    setTimeout(resize, 220);
+  }
+  if(window.ResizeObserver){
+    new ResizeObserver(resize).observe(feedsEl);
+    new ResizeObserver(resizeSpectral).observe(specEl);
+  }
+  function startAll(){ resizeSoon(); running=true; requestAnimationFrame(loop); }
 
   function loop(t){
     if(!running) return; requestAnimationFrame(loop);
     const time=t*0.001;
     const freq=engine.getFrequencyData();
+    const level=engine.getLevel();
+    const low=bandAvg(freq,0.01,0.08);
+    const mid=bandAvg(freq,0.08,0.24);
+    const high=bandAvg(freq,0.24,0.55);
+    const hit=Math.min(1, level*1.6 + low*0.55 + mid*0.35);
     const ts=new Date().toISOString().substr(11,8);
 
-    hull.rotation.y+=0.002; hullRing.rotation.x+=0.004; hullRing.rotation.y+=0.002;
+    feedsEl.style.setProperty('--audio-hit', hit.toFixed(3));
+    ambient.intensity=0.55+hit*0.75;
+    fill.intensity=0.35+mid*2.2+hit*0.8;
+    scene.fog.density=0.018+high*0.018;
+    hull.rotation.y+=0.002+mid*0.006; hullRing.rotation.x+=0.004+high*0.012; hullRing.rotation.y+=0.002+low*0.01;
+    hull.scale.setScalar(1+hit*0.14);
+    hull.material.emissive.setHex(0x15351e);
+    hull.material.emissiveIntensity=hit*0.55;
+    hullRing.scale.setScalar(1+low*0.28);
+    hullRing.material.opacity=0.22+hit*0.55;
+    audioRings.forEach((ring,i)=>{
+      const v=i===0?low:i===1?mid:high;
+      ring.rotation.z+=0.003+(i+1)*0.001+v*0.012;
+      ring.scale.setScalar(1+v*(0.24+i*0.12)+Math.sin(time*2+i)*0.025);
+      ring.material.opacity=0.06+v*0.45+hit*0.08;
+    });
 
     // drift debris + proximity detection
     debris.forEach((d,i)=>{
       d.mesh.position.add(d.vel);
       d.mesh.rotation.x+=d.spin.x; d.mesh.rotation.y+=d.spin.y; d.mesh.rotation.z+=d.spin.z;
+      const bin=(freq[(d.binLo+i*7)%freq.length]||0)/255;
       // gentle pull so objects pass near the hull then recede
       const dist=d.mesh.position.length();
       if(dist>24) resetDebris(d.mesh,false);
-      const isNear=dist<PROX;
+      const isNear=dist<soundCfg.proximity;
       if(isNear && !d.near){
         d.near=true;
-        const closeness=(PROX-dist)/PROX;
+        const closeness=(soundCfg.proximity-dist)/soundCfg.proximity;
         // nearest camera to this debris
         let nc=FEEDS[0], best=1e9;
         FEEDS.forEach(f=>{ const dd=f.cam.position.distanceTo(d.mesh.position); if(dd<best){ best=dd; nc=f; } });
         nc.alertEl.style.opacity=1; setTimeout(()=>{ nc.alertEl.style.opacity=0; }, 600);
-        if(standardEnabled) engine.pingStandard({ freq:300+closeness*400, pan:nc.dir.x/14, duration:0.2, type:'square', gain:0.15+closeness*0.25 });
-        if(spatialEnabled){ const v=engine.createSpatialVoice({ freq:d.baseFreq, type:'triangle' }); const dir=nc.dir.clone().normalize().multiplyScalar(3); v.setPosition(dir.x,dir.y,dir.z); v.setGain(0.4); setTimeout(()=>v.stop(0.1),200); }
-      } else if(dist>PROX*1.3){ d.near=false; }
+        if(standardEnabled) engine.pingStandard({ freq:soundCfg.impactPitch+closeness*soundCfg.closenessPitch, pan:nc.dir.x/14, duration:soundCfg.impactDuration, type:'square', gain:(0.15+closeness*0.25)*soundCfg.impactGain });
+        if(spatialEnabled){ const v=engine.createSpatialVoice({ freq:d.baseFreq, type:'triangle' }); const dir=nc.dir.clone().normalize().multiplyScalar(3); v.setPosition(dir.x,dir.y,dir.z); v.setGain(0.4*soundCfg.spatialGain); setTimeout(()=>v.stop(0.1),soundCfg.impactDuration*1000); }
+      } else if(dist>soundCfg.proximity*1.3){ d.near=false; }
       // color hot when near
-      d.mesh.material.color.setHex(isNear ? 0xE8483B : 0x8a8f92);
+      d.mesh.material.color.setHex(isNear ? 0xE8483B : (bin>0.58 ? 0xC9FFD4 : 0x8a8f92));
+      d.mesh.material.emissive.setHex(isNear ? 0xE8483B : 0x39FF6A);
+      d.mesh.material.emissiveIntensity=isNear ? 0.45+hit*0.35 : bin*0.38;
+      d.mesh.scale.setScalar(1+bin*0.48+(isNear?0.22:0));
     });
 
     // render four viewports of the shared scene (WebGL origin is bottom-left)
@@ -221,7 +294,14 @@
     FEEDS.forEach((f,i)=>{
       const r=rects[i];
       // subtle camera sway per feed
-      f.cam.position.copy(f.dir); f.cam.position.x+=Math.sin(time*0.3+i)*0.4; f.cam.position.y+=Math.cos(time*0.24+i)*0.3; f.cam.lookAt(0,0,0);
+      const feedEnergy=i===0?low:i===1?mid:i===2?high:hit;
+      f.cell.style.setProperty('--audio-hit', Math.min(1, feedEnergy*1.35).toFixed(3));
+      f.cam.position.copy(f.dir);
+      f.cam.position.x+=Math.sin(time*0.3+i)*(0.32+feedEnergy*0.7);
+      f.cam.position.y+=Math.cos(time*0.24+i)*(0.24+feedEnergy*0.5);
+      f.cam.fov=47+feedEnergy*3.2;
+      f.cam.updateProjectionMatrix();
+      f.cam.lookAt(0,0,0);
       renderer.setViewport(r[0],r[1],r[2],r[3]);
       renderer.setScissor(r[0],r[1],r[2],r[3]);
       renderer.render(scene, f.cam);

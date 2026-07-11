@@ -18,7 +18,7 @@
   *{box-sizing:border-box;}
   html,body{ margin:0; width:100%; height:100%; background:var(--void); color:var(--starlight);
     font-family:'JetBrains Mono',monospace; overflow:hidden; }
-  #viewport{ position:fixed; inset:0; }
+  #viewport{ position:fixed; left:0; right:0; top:0; bottom:132px; }
   #viewport canvas{ display:block; width:100%; height:100%; }
 
   /* thin top ticker */
@@ -40,22 +40,23 @@
 
   /* slide-out waypoint list, left edge */
   #waypoints{
-    position:fixed; top:56px; left:0; z-index:5;
-    width:216px; padding:14px 16px;
-    background:linear-gradient(90deg, rgba(6,10,18,0.9), rgba(6,10,18,0.15));
-    border-left:2px solid var(--waypoint);
-    transform:translateX(-176px); transition:transform .3s ease;
+    position:fixed; left:0; right:0; bottom:0; z-index:5;
+    width:auto; height:132px; padding:12px 16px;
+    background:linear-gradient(180deg, rgba(6,10,18,0.9), rgba(6,10,18,0.98));
+    border-top:1px solid var(--line); border-left:2px solid var(--waypoint);
+    transform:none; transition:none; display:grid; grid-template-columns:150px 1fr; gap:12px; align-items:start;
   }
-  #waypoints:hover{ transform:translateX(0); }
-  #waypoints h2{ margin:0 0 10px; font-family:'Space Grotesk',sans-serif; font-size:11px;
+  #waypoints:hover{ transform:none; }
+  #waypoints h2{ margin:0; font-family:'Space Grotesk',sans-serif; font-size:11px;
     letter-spacing:0.2em; color:var(--starlight); text-transform:uppercase; font-weight:500;}
-  .wp{ margin-bottom:11px; font-size:10.5px; line-height:1.5; }
+  #wp-list{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; }
+  .wp{ margin-bottom:0; font-size:10.5px; line-height:1.5; min-width:0; }
   .wp .desig{ color:var(--waypoint); font-weight:700; letter-spacing:0.1em; }
   .wp .desig.next{ color:var(--starlight); }
   .wp .meta{ color:var(--ghost); }
   .wp .bar{ height:2px; margin-top:3px; background:var(--line); }
   .wp .bar span{ display:block; height:100%; background:var(--deep-cyan); }
-  #waypoints .tab{ position:absolute; right:-2px; top:0; bottom:0; width:8px; }
+  #waypoints .tab{ display:none; }
 
   #controls{
     position:fixed; bottom:16px; right:16px; z-index:5;
@@ -65,6 +66,11 @@
   .toggle-row{ display:flex; align-items:center; justify-content:space-between; font-size:10.5px;
     letter-spacing:0.08em; color:var(--ghost); }
   .toggle-row label{ font-family:'Space Grotesk',sans-serif; text-transform:uppercase; letter-spacing:0.12em; }
+  .sound-control{ display:grid; grid-template-columns:86px 1fr 42px; gap:8px; align-items:center;
+    font-size:9.5px; letter-spacing:0.08em; color:var(--ghost); }
+  .sound-control span:first-child{ font-family:'Space Grotesk',sans-serif; text-transform:uppercase; letter-spacing:0.12em; }
+  .sound-control output{ text-align:right; color:var(--deep-cyan); }
+  .sound-control input{ width:100%; accent-color:var(--waypoint); }
   .switch{ width:34px; height:16px; background:var(--void); border:1px solid var(--line); position:relative; cursor:pointer; flex:none; }
   .switch .knob{ position:absolute; top:1px; left:1px; width:12px; height:12px; background:var(--ghost); transition:all .15s ease; }
   .switch.on{ border-color:var(--deep-cyan); }
@@ -109,6 +115,19 @@
 <div id="controls">
   <div class="toggle-row"><label>Beacon Bearing</label><div class="switch on" id="toggle-spatial"><div class="knob"></div></div></div>
   <div class="toggle-row"><label>Arrival Chime</label><div class="switch on" id="toggle-standard"><div class="knob"></div></div></div>
+  <div class="sound-control"><span>Route</span><input data-sound="routeSpeed" type="range" min="0.25" max="3" step="0.05" value="1"><output>1.00x</output></div>
+  <div class="sound-control"><span>Pitch</span><input data-sound="oscPitch" type="range" min="28" max="420" step="1" value="92"><output>92Hz</output></div>
+  <div class="sound-control"><span>Cutoff</span><input data-sound="cutoff" type="range" min="180" max="12000" step="10" value="2600"><output>2600Hz</output></div>
+  <div class="sound-control"><span>PWM Rate</span><input data-sound="pwmRate" type="range" min="0.02" max="1.2" step="0.01" value="0.12"><output>0.12Hz</output></div>
+  <div class="sound-control"><span>PWM Depth</span><input data-sound="pwmDepth" type="range" min="0" max="0.46" step="0.01" value="0.28"><output>28%</output></div>
+  <div class="sound-control"><span>PWM Layer</span><input data-sound="modLayer" type="range" min="0" max="1" step="0.01" value="0.72"><output>72%</output></div>
+  <div class="sound-control"><span>Steady</span><input data-sound="steadyLayer" type="range" min="0" max="1" step="0.01" value="0.52"><output>52%</output></div>
+  <div class="sound-control"><span>Thresh</span><input data-sound="compThreshold" type="range" min="-60" max="-6" step="1" value="-24"><output>-24dB</output></div>
+  <div class="sound-control"><span>Ratio</span><input data-sound="compRatio" type="range" min="1" max="20" step="0.5" value="8"><output>8:1</output></div>
+  <div class="sound-control"><span>Attack</span><input data-sound="compAttack" type="range" min="0.001" max="0.08" step="0.001" value="0.012"><output>12ms</output></div>
+  <div class="sound-control"><span>Release</span><input data-sound="compRelease" type="range" min="0.03" max="0.8" step="0.01" value="0.24"><output>240ms</output></div>
+  <div class="sound-control"><span>Trim</span><input data-sound="outputTrim" type="range" min="0.2" max="1.2" step="0.01" value="0.72"><output>72%</output></div>
+  <div class="sound-control"><span>Chime</span><input data-sound="chimeGain" type="range" min="0" max="1" step="0.01" value="0.38"><output>38%</output></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -122,6 +141,195 @@
   let spatialEnabled = true, standardEnabled = true;
   document.getElementById('toggle-spatial').addEventListener('click', function(){ spatialEnabled=!spatialEnabled; this.classList.toggle('on',spatialEnabled); });
   document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
+  const navSound = {
+    routeSpeed: 1,
+    oscPitch: 92,
+    cutoff: 2600,
+    pwmRate: 0.12,
+    pwmDepth: 0.28,
+    modLayer: 0.72,
+    steadyLayer: 0.52,
+    compThreshold: -24,
+    compRatio: 8,
+    compAttack: 0.012,
+    compRelease: 0.24,
+    outputTrim: 0.72,
+    chimeGain: 0.38
+  };
+
+  function clamp(v, min, max){ return Math.max(min, Math.min(max, Number(v))); }
+  function isMediaPlaying(){
+    try { return !!(engine.getMediaState && engine.getMediaState().playing); } catch(e){ return false; }
+  }
+  function waypointFreq(w){
+    return navSound.oscPitch + w.toneOffset;
+  }
+  function formatControl(key, value){
+    if(key === 'routeSpeed') return value.toFixed(2) + 'x';
+    if(key === 'oscPitch' || key === 'cutoff') return Math.round(value) + 'Hz';
+    if(key === 'pwmRate') return value.toFixed(2) + 'Hz';
+    if(key === 'compThreshold') return Math.round(value) + 'dB';
+    if(key === 'compRatio') return value.toFixed(value < 10 ? 1 : 0) + ':1';
+    if(key === 'compAttack' || key === 'compRelease') return Math.round(value * 1000) + 'ms';
+    return Math.round(value * 100) + '%';
+  }
+  function setNavSoundConfig(cfg){
+    if(!cfg) return;
+    if(cfg.routeSpeed != null) navSound.routeSpeed = clamp(cfg.routeSpeed, 0.25, 3);
+    if(cfg.oscPitch != null) navSound.oscPitch = clamp(cfg.oscPitch, 28, 420);
+    if(cfg.cutoff != null) navSound.cutoff = clamp(cfg.cutoff, 180, 12000);
+    if(cfg.pwmRate != null) navSound.pwmRate = clamp(cfg.pwmRate, 0.02, 1.2);
+    if(cfg.pwmDepth != null) navSound.pwmDepth = clamp(cfg.pwmDepth, 0, 0.46);
+    if(cfg.modLayer != null) navSound.modLayer = clamp(cfg.modLayer, 0, 1);
+    if(cfg.steadyLayer != null) navSound.steadyLayer = clamp(cfg.steadyLayer, 0, 1);
+    if(cfg.compThreshold != null) navSound.compThreshold = clamp(cfg.compThreshold, -60, -6);
+    if(cfg.compRatio != null) navSound.compRatio = clamp(cfg.compRatio, 1, 20);
+    if(cfg.compAttack != null) navSound.compAttack = clamp(cfg.compAttack, 0.001, 0.08);
+    if(cfg.compRelease != null) navSound.compRelease = clamp(cfg.compRelease, 0.03, 0.8);
+    if(cfg.outputTrim != null) navSound.outputTrim = clamp(cfg.outputTrim, 0.2, 1.2);
+    if(cfg.chimeGain != null) navSound.chimeGain = clamp(cfg.chimeGain, 0, 1);
+    waypoints.forEach(w => { if(w.voice) w.voice.updateConfig(navSound); });
+    document.querySelectorAll('[data-sound]').forEach(input => {
+      const key = input.dataset.sound;
+      if(navSound[key] == null) return;
+      input.value = navSound[key];
+      input.nextElementSibling.textContent = formatControl(key, navSound[key]);
+    });
+  }
+  window.__shipPanelConfig = setNavSoundConfig;
+  document.querySelectorAll('[data-sound]').forEach(input => {
+    input.addEventListener('input', () => setNavSoundConfig({ [input.dataset.sound]: parseFloat(input.value) }));
+  });
+
+  class NavPulseVoice {
+    constructor(ctx, bus, freq, cfg){
+      this.ctx = ctx;
+      this.freq = freq;
+      this.cfg = Object.assign({}, cfg);
+      this.output = ctx.createGain();
+      this.output.gain.value = 0;
+      this.filter = ctx.createBiquadFilter();
+      this.filter.type = 'lowpass';
+      this.filter.Q.value = 0.85;
+      this.compressor = ctx.createDynamicsCompressor();
+      this.trim = ctx.createGain();
+      this.panner = ctx.createPanner();
+      this.panner.panningModel = 'HRTF';
+      this.panner.distanceModel = 'inverse';
+      this.panner.refDistance = 1;
+      this.panner.maxDistance = 44;
+      this.panner.rolloffFactor = 1.05;
+      this.output.connect(this.filter);
+      this.filter.connect(this.compressor);
+      this.compressor.connect(this.trim);
+      this.trim.connect(this.panner);
+      this.panner.connect(bus);
+      this.mod = this._buildPulseLayer(true);
+      this.steady = this._buildPulseLayer(false);
+      this.updateConfig(cfg);
+      this.setFrequency(freq, 0.01);
+    }
+    _buildPulseLayer(modulated){
+      const ctx = this.ctx;
+      const layerGain = ctx.createGain();
+      const oscA = ctx.createOscillator();
+      const oscB = ctx.createOscillator();
+      const delay = ctx.createDelay(0.05);
+      const invert = ctx.createGain();
+      const lfo = modulated ? ctx.createOscillator() : null;
+      const lfoGain = modulated ? ctx.createGain() : null;
+      oscA.type = 'sawtooth';
+      oscB.type = 'sawtooth';
+      invert.gain.value = -1;
+      oscA.connect(layerGain);
+      oscB.connect(delay);
+      delay.connect(invert);
+      invert.connect(layerGain);
+      if(lfo){
+        lfo.connect(lfoGain);
+        lfoGain.connect(delay.delayTime);
+        lfo.start();
+      }
+      layerGain.connect(this.output);
+      oscA.start();
+      oscB.start();
+      return { layerGain, oscA, oscB, delay, lfo, lfoGain };
+    }
+    updateConfig(cfg){
+      this.cfg = Object.assign({}, this.cfg, cfg);
+      const t = this.ctx.currentTime;
+      this.filter.frequency.setTargetAtTime(this.cfg.cutoff, t, 0.05);
+      this.compressor.threshold.setTargetAtTime(this.cfg.compThreshold, t, 0.04);
+      this.compressor.knee.setTargetAtTime(18, t, 0.04);
+      this.compressor.ratio.setTargetAtTime(this.cfg.compRatio, t, 0.04);
+      this.compressor.attack.setTargetAtTime(this.cfg.compAttack, t, 0.04);
+      this.compressor.release.setTargetAtTime(this.cfg.compRelease, t, 0.04);
+      this.trim.gain.setTargetAtTime(this.cfg.outputTrim, t, 0.04);
+      this.mod.layerGain.gain.setTargetAtTime(this.cfg.modLayer * 0.42, t, 0.05);
+      this.steady.layerGain.gain.setTargetAtTime(this.cfg.steadyLayer * 0.38, t, 0.05);
+      if(this.mod.lfo) this.mod.lfo.frequency.setTargetAtTime(this.cfg.pwmRate, t, 0.08);
+      this._updatePulseDelays(t);
+    }
+    _updatePulseDelays(t){
+      const baseDelay = clamp(0.5 / Math.max(30, this.freq), 0.0003, 0.03);
+      const depthDelay = clamp(this.cfg.pwmDepth / Math.max(30, this.freq), 0, 0.018);
+      this.mod.delay.delayTime.setTargetAtTime(baseDelay, t, 0.05);
+      this.steady.delay.delayTime.setTargetAtTime(baseDelay, t, 0.05);
+      if(this.mod.lfoGain) this.mod.lfoGain.gain.setTargetAtTime(depthDelay, t, 0.08);
+    }
+    setPosition(x, y, z){
+      const t = this.ctx.currentTime;
+      if(this.panner.positionX){
+        this.panner.positionX.setTargetAtTime(x, t, 0.05);
+        this.panner.positionY.setTargetAtTime(y, t, 0.05);
+        this.panner.positionZ.setTargetAtTime(z, t, 0.05);
+      } else if(this.panner.setPosition) {
+        this.panner.setPosition(x, y, z);
+      }
+    }
+    setFrequency(freq, glideSeconds){
+      this.freq = freq;
+      const t = this.ctx.currentTime;
+      this.mod.oscA.frequency.setTargetAtTime(freq, t, glideSeconds || 0.08);
+      this.mod.oscB.frequency.setTargetAtTime(freq, t, glideSeconds || 0.08);
+      this.steady.oscA.frequency.setTargetAtTime(freq, t, glideSeconds || 0.08);
+      this.steady.oscB.frequency.setTargetAtTime(freq, t, glideSeconds || 0.08);
+      this._updatePulseDelays(t);
+    }
+    setGain(g, rampSeconds){
+      this.output.gain.setTargetAtTime(clamp(g, 0, 1), this.ctx.currentTime, rampSeconds || 0.08);
+    }
+    stop(fadeSeconds){
+      const t = this.ctx.currentTime;
+      const fade = fadeSeconds == null ? 0.15 : fadeSeconds;
+      this.output.gain.setTargetAtTime(0, t, fade);
+      const nodes = [this.mod.oscA, this.mod.oscB, this.steady.oscA, this.steady.oscB, this.mod.lfo].filter(Boolean);
+      nodes.forEach(n => { try { n.stop(t + fade * 4 + 0.05); } catch(e){} });
+      setTimeout(() => {
+        try { this.output.disconnect(); } catch(e){}
+        try { this.filter.disconnect(); } catch(e){}
+        try { this.compressor.disconnect(); } catch(e){}
+        try { this.trim.disconnect(); } catch(e){}
+        try { this.panner.disconnect(); } catch(e){}
+      }, (fade * 4 + 0.2) * 1000);
+    }
+  }
+
+  function createNavPulseVoice(freq){
+    if(!engine.ctx || !engine._spatialBus || isMediaPlaying()) return null;
+    return new NavPulseVoice(engine.ctx, engine._spatialBus, freq, navSound);
+  }
+
+  function pingNavPulse(freq){
+    if(!engine.ctx || !engine._standardBus || isMediaPlaying()) return;
+    const ctx = engine.ctx;
+    const voice = new NavPulseVoice(ctx, engine._standardBus, freq, navSound);
+    voice.panner.disconnect();
+    voice.trim.disconnect();
+    voice.trim.connect(engine._standardBus);
+    voice.setGain(0.36 * navSound.chimeGain, 0.01);
+    setTimeout(() => voice.stop(0.08), 120);
+  }
 
   document.getElementById('boot-btn').addEventListener('click', async function(){
     this.disabled = true; this.textContent = 'Plotting…';
@@ -190,7 +398,7 @@
     const haloGeo = new THREE.OctahedronGeometry(2.4, 0);
     const halo = new THREE.Mesh(haloGeo, new THREE.MeshBasicMaterial({ color:0xB25CC9, wireframe:true, transparent:true, opacity:0.18 }));
     halo.position.copy(p); scene.add(halo);
-    waypoints.push({ id:DESIGS[i], u, pos:p, mesh, halo, baseFreq:180+i*70, voice:null, arrived:false });
+    waypoints.push({ id:DESIGS[i], u, pos:p, mesh, halo, toneOffset:i*34, voice:null, arrived:false });
   });
 
   function resize(){
@@ -216,7 +424,7 @@
     const level = engine.getLevel();
 
     // camera drifts forward along the route, looping
-    journey = (journey + 0.00035) % 1;
+    journey = (journey + 0.00035 * navSound.routeSpeed) % 1;
     const camU = journey;
     const camPos = curve.getPointAt(camU);
     const aheadU = (camU + 0.02) % 1;
@@ -255,20 +463,23 @@
       w.mesh.scale.setScalar(isNext ? 1.15+Math.sin(time*4)*0.08 : 1);
 
       // spatial beacon: bearing audible, transformed into camera/listener frame
-      if (spatialEnabled){
-        if(!w.voice) w.voice = engine.createSpatialVoice({ freq:w.baseFreq, type:'sine' });
-        _tmp.copy(w.pos); camera.worldToLocal(_tmp);
-        const s = 0.35; w.voice.setPosition(_tmp.x*s, _tmp.y*s, _tmp.z*s);
-        // doppler-style: pitch rises as the next waypoint approach tightens
-        const closeness = isNext ? Math.max(0, 1-nextGap*6) : 0;
-        w.voice.setFrequency(w.baseFreq * (1 + closeness*0.5));
-        w.voice.setGain(Math.max(0.04, 0.5 - dist*0.006));
+      if (spatialEnabled && !isMediaPlaying()){
+        if(!w.voice) w.voice = createNavPulseVoice(waypointFreq(w));
+        if(w.voice){
+          _tmp.copy(w.pos); camera.worldToLocal(_tmp);
+          const s = 0.35; w.voice.setPosition(_tmp.x*s, _tmp.y*s, _tmp.z*s);
+          // doppler-style: pitch rises as the next waypoint approach tightens
+          const closeness = isNext ? Math.max(0, 1-nextGap*6) : 0;
+          w.voice.updateConfig(navSound);
+          w.voice.setFrequency(waypointFreq(w) * (1 + closeness*0.22));
+          w.voice.setGain(Math.max(0.04, 0.5 - dist*0.006));
+        }
       } else if (w.voice){ w.voice.stop(); w.voice=null; }
 
       // arrival chime when the camera crosses a waypoint
       if (dist < 5 && !w.arrived){
         w.arrived = true;
-        if (standardEnabled) engine.pingStandard({ freq:w.baseFreq*3, pan:0, duration:0.5, type:'sine', gain:0.35 });
+        if (standardEnabled) pingNavPulse(waypointFreq(w)*2.2);
       } else if (dist > 9){ w.arrived = false; }
 
       html += `<div class="wp"><span class="desig ${isNext?'next':''}">${w.id}</span>`+

@@ -36,8 +36,8 @@
     position:relative;
     width:100vw; height:100vh;
     display:grid;
-    grid-template-columns: 1fr 220px;
-    grid-template-rows: 56px 1fr 130px;
+    grid-template-columns: 1fr;
+    grid-template-rows: 56px minmax(0,1fr) clamp(104px, 16vh, 132px);
     gap:1px;
     background:var(--line);
     padding:1px;
@@ -56,7 +56,7 @@
   .panel::after{ bottom:6px; right:6px; border-bottom:2px solid; border-right:2px solid; }
 
   #topbar{
-    grid-column:1 / span 2;
+    grid-column:1;
     display:flex; align-items:center; justify-content:space-between;
     padding:0 18px;
     background:linear-gradient(180deg, #0D130F, #0A0E0B);
@@ -83,20 +83,20 @@
   }
   #contact-list .c-row b{ color:var(--cyan); }
 
-  #waterfall{ grid-column:2; grid-row:2; }
+  #waterfall{ min-width:0; }
   #waterfall canvas{ display:block; width:100%; height:100%; }
   #waterfall .vp-label{ position:absolute; top:14px; left:14px; font-size:10px; color:var(--paper-dim); letter-spacing:0.15em; z-index:2;}
 
   #bottombar{
-    grid-column:1 / span 2; grid-row:3;
-    display:grid; grid-template-columns: 1fr 260px;
-    gap:1px; background:var(--line);
+    grid-column:1; grid-row:3;
+    display:grid; grid-template-columns: 230px minmax(0,1fr) 260px;
+    gap:1px; background:var(--line); min-height:0;
   }
   #scope{ background:var(--panel); position:relative; }
   #scope canvas{ display:block; width:100%; height:100%; }
   #scope .vp-label{ position:absolute; top:10px; left:14px; font-size:10px; color:var(--paper-dim); letter-spacing:0.15em; z-index:2;}
 
-  #controls{ background:var(--panel); padding:12px 16px; display:flex; flex-direction:column; gap:8px; justify-content:center; }
+  #controls{ background:var(--panel); padding:12px 16px; display:flex; flex-direction:column; gap:8px; justify-content:center; min-width:0; }
   #engage-btn{
     font-family:'Barlow Condensed', sans-serif; text-transform:uppercase; letter-spacing:0.12em;
     font-weight:700; font-size:14px;
@@ -131,6 +131,19 @@
   }
   #boot-btn:hover{ background:var(--amber); color:var(--void); }
   .hidden{ display:none !important; }
+
+  @media (max-height: 640px){
+    #app{ grid-template-rows: 48px minmax(0,1fr) 104px; }
+    #topbar{ padding:0 14px; }
+    #topbar .ship-id{ font-size:17px; }
+    #topbar .sub{ font-size:10px; }
+    #topbar .status-cluster{ gap:10px; font-size:10px; }
+    #contact-list{ bottom:10px; line-height:1.35; }
+    #controls{ padding:8px 12px; gap:5px; }
+    #engage-btn{ padding:6px 8px; font-size:13px; }
+    .toggle-row{ font-size:10px; }
+    #waterfall .vp-label, #scope .vp-label{ top:7px; left:10px; }
+  }
 </style>
 </head>
 <body>
@@ -158,11 +171,10 @@
     <div id="contact-list"></div>
   </div>
 
-  <div id="waterfall" class="panel">
-    <div class="vp-label">SPECTROGRAPH</div>
-  </div>
-
   <div id="bottombar">
+    <div id="waterfall" class="panel">
+      <div class="vp-label">SPECTROGRAPH</div>
+    </div>
     <div id="scope" class="panel">
       <div class="vp-label">WAVEFORM / LEVEL</div>
     </div>
@@ -199,6 +211,18 @@
   const engine = new ShipAudioEngine({ fftSize: 2048, smoothing: 0.8 });
   let spatialEnabled = true;
   let standardEnabled = true;
+  const soundCfg = { beaconPitch:1, beaconGain:1, spikeThreshold:0.55, pingRate:0.4, pingPitch:1.5, pingGain:1, pingDuration:0.25 };
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, Number(v))); }
+  window.__shipPanelConfig = function(cfg){
+    if(!cfg) return;
+    if(cfg.beaconPitch != null) soundCfg.beaconPitch = clamp(cfg.beaconPitch, 0.35, 2.5);
+    if(cfg.beaconGain != null) soundCfg.beaconGain = clamp(cfg.beaconGain, 0, 1.6);
+    if(cfg.spikeThreshold != null) soundCfg.spikeThreshold = clamp(cfg.spikeThreshold, 0.15, 0.95);
+    if(cfg.pingRate != null) soundCfg.pingRate = clamp(cfg.pingRate, 0.08, 1.2);
+    if(cfg.pingPitch != null) soundCfg.pingPitch = clamp(cfg.pingPitch, 0.5, 3);
+    if(cfg.pingGain != null) soundCfg.pingGain = clamp(cfg.pingGain, 0, 1.4);
+    if(cfg.pingDuration != null) soundCfg.pingDuration = clamp(cfg.pingDuration, 0.05, 0.8);
+  };
 
   document.getElementById('toggle-spatial').addEventListener('click', function(){
     spatialEnabled = !spatialEnabled;
@@ -416,21 +440,21 @@
       // spatial sonification
       if (spatialEnabled){
         if (!c.spatialVoice){
-          c.spatialVoice = engine.createSpatialVoice({ freq: c.baseFreq, type:'sine' });
+          c.spatialVoice = engine.createSpatialVoice({ freq: c.baseFreq * soundCfg.beaconPitch, type:'sine' });
         }
         c.spatialVoice.setPosition(x*0.6, y*0.6, z*0.6);
-        c.spatialVoice.setFrequency(c.baseFreq + c.amp*120);
-        c.spatialVoice.setGain(c.amp * 0.5);
+        c.spatialVoice.setFrequency((c.baseFreq + c.amp*120) * soundCfg.beaconPitch);
+        c.spatialVoice.setGain(c.amp * 0.5 * soundCfg.beaconGain);
       } else if (c.spatialVoice){
         c.spatialVoice.stop();
         c.spatialVoice = null;
       }
 
       // standard sonification: ping when amplitude spikes
-      if (standardEnabled && c.amp > 0.55 && (time - c.lastPingTime) > 0.4){
+      if (standardEnabled && c.amp > soundCfg.spikeThreshold && (time - c.lastPingTime) > soundCfg.pingRate){
         c.lastPingTime = time;
         const pan = Math.cos(c.azimuth); // left/right pan from bearing
-        engine.pingStandard({ freq: c.baseFreq*1.5, pan, duration:0.25, gain:0.3, type:'triangle' });
+        engine.pingStandard({ freq: c.baseFreq*soundCfg.pingPitch, pan, duration:soundCfg.pingDuration, gain:0.3*soundCfg.pingGain, type:'triangle' });
       }
 
       listHtml += `<div class="c-row"><b>${c.id}</b> BRG ${(c.azimuth*180/Math.PI%360).toFixed(0).padStart(3,'0')}&deg; &nbsp; AMP ${(c.amp*100).toFixed(0).padStart(3,'0')}</div>`;

@@ -12,23 +12,30 @@
 ![Screens](https://img.shields.io/badge/screens-10%20%2F%2010%20online-brightgreen)
 ![Status](https://img.shields.io/badge/status-complete-brightgreen)
 
-> Handing this to Claude Code? Start with **CLAUDE.md** (conventions, hard
-> constraints, shared audio API reference) and **ROADMAP.md** (full design
-> brief for each of the 9 remaining screens). This file covers setup and
-> what's already built.
+> Handing this to Claude Code (or another agent)? Start with **CLAUDE.md** /
+> **AGENTS.md** (identical — conventions, hard constraints, shared audio API
+> reference) and **ROADMAP.md** (the design brief for each screen). This file
+> covers setup and what's already built.
 
 A set of 10 sci-fi ship data screens — each a self-contained HTML file with
 3D animation (Three.js), a live spectrograph/waterfall, an oscilloscope, and
 both **3D spatial** and **standard stereo** audio sonification.
 
+Every screen reacts to **live sound** — your microphone, an **audio/video file
+you drop in**, or (with no input at all) a procedural synth bed. On top of that,
+each screen exposes a set of **live-tunable sonification parameters**, so you can
+retune what the console actually *sounds* like on the fly.
+
 Two ways to run them:
 
 - **`app.html` — the Bridge Console** (default): all 10 screens on one wall in
-  a single window. Pick a layout (Solo / Duo / Trio), and the featured modules
-  run full-rate and full-volume in the center while the rest run as
-  low-frame-rate, lower-volume previews on the side rails. Each pane has its own
-  volume slider; click a rail pane's ⤢ to promote it to center. One "Engage
-  Console" gesture boots audio in every pane at once.
+  a single window. Pick a layout — **Solo / Duo / Trio** feature one, two, or
+  three modules full-rate and full-volume in the center while the rest run as
+  low-frame-rate previews on the side rails, or **Grid** shows all 10 at once as
+  pure-visualizer thumbnails. Each pane has its own volume + reactivity sliders
+  and a **CTL** panel for live sound tuning; click a rail pane's ⤢ to promote it
+  to center. Load an audio/video file in the top bar and every pane reacts to it.
+  One "Engage Console" gesture boots audio in every pane at once.
 - **`launcher.html` — the multi-window deck**: assign any screen to any of 10
   slots and pop each out as its own OS-level window to tile across a desktop.
 
@@ -43,17 +50,21 @@ deliberate (see CLAUDE.md); the choices below all follow from it.
 | **Markup / styling** | HTML5, CSS3 | One self-contained `.html` per screen; all CSS inline. CSS Grid for layout, custom properties for each screen's palette tokens. |
 | **Language** | Vanilla JavaScript (ES6+) | No framework, no TypeScript, no transpile. Screen logic is inline; only the audio engine is shared. |
 | **3D rendering** | [Three.js](https://threejs.org/) **r128** | Loaded as a global `THREE` from cdnjs (UMD build). Pinned to r128 — the last version with a simple non-module build that works over `file://`. Note: no `THREE.CapsuleGeometry` at this version. |
-| **Audio** | [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) | FFT analysis (`AnalyserNode`), 3D spatial audio via HRTF `PannerNode`, stereo pings via `StereoPannerNode`, procedural synth fallback via `OscillatorNode` + filtered `AudioBufferSourceNode` noise. |
-| **Audio input** | `getUserMedia` (live mic) | Falls back automatically to a procedural "deep space signal" synth bed when no mic / permission denied / `file://` origin. |
+| **Audio** | [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) | FFT analysis (`AnalyserNode`), 3D spatial audio via HRTF `PannerNode`, stereo pings via `StereoPannerNode`, procedural synth fallback via `OscillatorNode` + filtered `AudioBufferSourceNode` noise. Media/file playback routed through an effects chain (`BiquadFilter`, `DelayNode`, `ConvolverNode` reverb, modulated-delay chorus/flange, playback-rate pitch). |
+| **Audio input** | `getUserMedia` (live mic), **dropped audio/video file**, or synth | Three interchangeable sources: live mic, a media file you load via the File Deck, or a procedural "deep space signal" synth bed. Falls back automatically to synth when no mic / permission denied / `file://` origin. |
 | **2D drawing** | Canvas 2D | Spectrograph waterfall and oscilloscope are plain `<canvas>` + `CanvasRenderingContext2D`. |
 | **Typography** | Google Fonts (CDN) | Per-screen display + mono pairings, assigned in ROADMAP.md so no two screens collide. |
 | **Windowing** | `window.open()` | The launcher spawns each screen as a separate OS-level browser window for desktop tiling. |
 | **Local dev** | Python `http.server` | Any static file server works; needed only for live-mic testing (secure-context requirement). |
 
-**Shared code:** exactly one module, [`shared/audio-engine.js`](shared/audio-engine.js)
-(`window.ShipAudioEngine`) — a plain, non-module script providing source
-acquisition, FFT/time-domain data, spatial voices, and standard pings. Screens
-are otherwise fully independent.
+**Shared code:** two plain, non-module scripts. [`shared/audio-engine.js`](shared/audio-engine.js)
+(`window.ShipAudioEngine`) provides source acquisition (mic / media file /
+synth), FFT/time-domain data, spatial voices, standard pings, the media-file
+effects chain, and a self-injected **File Deck** UI. [`shared/embed.js`](shared/embed.js)
+is the console hook activated by `?embed=1` — it boots a screen on the shell's
+gesture and relays frame-rate, volume, reactivity, per-screen panel config, and
+"minimal" (thumbnail) mode from the console. Screens are otherwise fully
+independent.
 
 **No dependencies to install.** The only external loads at runtime are the
 Three.js CDN script and the Google Fonts stylesheets.
@@ -126,25 +137,71 @@ default.
 The single-window data wall. All 10 screens load as embedded panes; you never
 open separate windows.
 
-- **Layouts** (top bar): **Solo** (1 hero + rails), **Duo** (2 features + rails),
-  **Trio** (hero + 2 stacked + rails). Switching layouts keeps your current
-  featured order.
+- **Layouts** (top bar):
+  - **Solo** — 1 hero + rails · **Duo** — 2 features + rails · **Trio** — hero +
+    2 stacked + rails. Switching between these keeps your current featured order.
+  - **Grid** — all 10 screens at once as a 4×3 wall of pure-visualizer
+    thumbnails (text chrome hidden, mid frame rate). Hover a thumbnail for its
+    controls.
 - **Engage Console** — one click boots audio in every pane at once (browsers
   require a user gesture to start audio; the console needs only one for all 10).
-- **Center vs. rails** — featured (center) panes render at full frame rate and
-  louder; rail panes render at a low frame rate and quieter, to stay within the
-  browser's WebGL-context and CPU budget.
-- **Per-pane volume** — every pane's title bar has a volume slider.
+- **Center vs. rails** — featured (center) panes render at full frame rate
+  (60fps) and louder; rail panes render at a low frame rate (12fps) and quieter,
+  to stay within the browser's WebGL-context and CPU budget. Grid thumbnails run
+  at an intermediate rate (24fps).
+- **Per-pane volume + reactivity** — every pane's title bar has a **VOL** slider
+  and an **RX** (audio-reactivity) slider that scales how strongly that screen's
+  visuals respond to the audio (0×–2×).
+- **CTL panel** — each pane's **CTL** button opens a popover of that screen's
+  live-tunable **sonification parameters** (e.g. Comms Array's beacon pitch/gain,
+  ping rate/pitch/length and spike threshold; Threat Matrix's sweep speed, threat
+  count and ping gain). Changes apply instantly with no reboot. See
+  [Per-screen sound tuning](#per-screen-sound-tuning) below.
+- **Media / File Deck** (top bar) — load an audio or video file and every pane
+  reacts to *it* instead of the mic/synth. Play/restart, seek, loop, mute the
+  file's own audio ("File Audio"), and apply a pass-through effect (Clean,
+  Filter, Delay, Reverb, Chorus, Flange, Pitch) with an amount slider.
+- **Rail width** — L/R sliders in the top bar resize the side rails (8%–28%).
 - **Promote** — click a rail pane's **⤢** to swap it into the primary center
   slot (the previous hero drops back to the rail). No reload — panes never
   re-boot when you rearrange them.
-- Your layout, order, and volumes persist in `localStorage`.
+- Your layout, order, volumes, and reactivity persist in `localStorage`.
 
 How it works: each screen is loaded in an `<iframe>` with `?embed=1`, which
 activates [`shared/embed.js`](shared/embed.js) — it hides the screen's own boot
-overlay/controls and lets the console drive boot, frame rate, and volume. The
-panes are positioned by CSS and never reparented, so rearranging the wall never
-reloads (or re-boots) a screen.
+overlay/controls and lets the console drive boot, frame rate, volume,
+reactivity, per-screen panel config, and "minimal" thumbnail mode. The panes are
+positioned by CSS and never reparented, so rearranging the wall never reloads (or
+re-boots) a screen.
+
+## Feed your own audio (File Deck)
+
+Every screen can be driven by an audio or video file instead of the mic or synth
+bed — drop in a track and the 3D scene, spectrograph, oscilloscope, and
+sonification all react to it.
+
+- **In the Bridge Console:** use the media controls in the top bar (above). One
+  file drives every pane.
+- **On a standalone screen:** each screen auto-injects a small **File Deck**
+  panel (bottom-left) after boot. Pick a file, then use its transport (play /
+  restart / seek / loop), toggle whether the file's own audio is audible, set an
+  **audio-reactivity** amount, and choose a pass-through **effect** (Clean,
+  Filter, Delay, Reverb, Chorus, Flange, Pitch) with a cutoff/amount control.
+
+The engine analyses the file exactly like a mic feed, so the visuals stay
+FFT-driven — you're just choosing what sound they listen to.
+
+## Per-screen sound tuning
+
+Beyond volume, each screen exposes a small set of **sonification parameters** you
+can retune live — pitch, gain, trigger thresholds, ping/klaxon rates, animation
+speeds, and so on — so the same screen can range from a quiet ambient drone to an
+aggressive alert console. In the Bridge Console these live behind each pane's
+**CTL** button (and inline under each Grid thumbnail); a screen picks them up
+through its `window.__shipPanelConfig(cfg)` hook, which the console drives via
+`embed.js`. Parameters are per-screen — Reactor exposes breach threshold and
+klaxon rate/pitch; Nav Core exposes route speed, oscillator pitch, PWM depth and
+a compressor; and so on.
 
 ## Using the launcher
 
@@ -185,10 +242,16 @@ ship-screens/
   app.html                 Bridge Console — single-window data wall (default)
   launcher.html            multi-window control deck — assigns & spawns windows
   server.py / serve.sh     zero-dependency Python app server (+ presets API)
+  CLAUDE.md / AGENTS.md     agent/contributor guide — conventions & hard
+                            constraints (AGENTS.md is the same brief, for
+                            agent tooling that looks for that filename)
+  ROADMAP.md               per-screen design brief for all 10 screens
   shared/
-    audio-engine.js        shared Web Audio backbone (mic + synth fallback,
-                            FFT analysis, HRTF spatial voices, standard pings)
-    embed.js               console hook — boot/fps/volume control when ?embed=1
+    audio-engine.js        shared Web Audio backbone: mic / media-file / synth
+                            sources, FFT analysis, HRTF spatial voices, standard
+                            pings, media effects chain, self-injected File Deck UI
+    embed.js               console hook — boot / fps / volume / reactivity /
+                            panel / minimal-mode control when ?embed=1
   screens/
     screen-01-comms-array.html
     ... through screen-10-hull-cameras.html

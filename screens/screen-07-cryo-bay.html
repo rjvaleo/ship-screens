@@ -22,8 +22,8 @@
   html,body{ margin:0; width:100%; height:100%; background:var(--paper); color:var(--ink);
     font-family:'IBM Plex Mono',monospace; overflow:hidden; }
   .disp{ font-family:'IBM Plex Sans',sans-serif; font-weight:500; }
-  #app{ position:fixed; inset:0; display:grid; grid-template-columns:392px 1fr; grid-template-rows:50px 1fr; }
-  #topbar{ grid-column:1/span 2; display:flex; align-items:center; justify-content:space-between; padding:0 22px; background:var(--card); border-bottom:1px solid var(--line); }
+  #app{ position:fixed; inset:0; display:grid; grid-template-columns:1fr; grid-template-rows:50px minmax(0,1fr) 116px; }
+  #topbar{ grid-column:1; grid-row:1; display:flex; align-items:center; justify-content:space-between; padding:0 22px; background:var(--card); border-bottom:1px solid var(--line); }
   #topbar .id{ font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:17px; letter-spacing:0.02em; color:var(--clinical); }
   #topbar .sub{ font-size:11px; color:var(--dim); letter-spacing:0.08em; margin-left:10px; }
   #topbar .mode{ font-size:11px; display:flex; align-items:center; gap:8px; color:var(--dim); }
@@ -31,20 +31,21 @@
   #topbar .dot.live{ background:var(--clinical); }
   #topbar .dot.synth{ background:var(--vitals); }
 
-  #pods{ grid-column:1; grid-row:2; padding:14px; overflow-y:auto; display:grid; grid-template-columns:1fr 1fr; gap:12px; align-content:start; }
-  .pod{ background:var(--card); border:1px solid var(--line); padding:10px 12px; cursor:pointer; }
+  #pods{ grid-column:1; grid-row:3; padding:10px 12px; overflow:hidden; display:grid; grid-template-columns:repeat(6, minmax(104px,1fr)); gap:8px; align-content:stretch; border-top:1px solid var(--line); background:#09161D; }
+  .pod{ background:var(--card); border:1px solid var(--line); padding:7px 8px; cursor:pointer; min-width:0; display:flex; flex-direction:column; }
   .pod.selected{ border-color:var(--clinical); box-shadow:0 0 0 1px var(--clinical); }
   .pod .head{ display:flex; justify-content:space-between; align-items:baseline; }
-  .pod .name{ font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:12px; color:var(--ink); }
+  .pod .name{ font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:11px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .pod .state{ font-size:9px; letter-spacing:0.1em; color:var(--clinical); }
   .pod .state.warn{ color:var(--vitals); }
-  .pod .ecg{ width:100%; height:40px; display:block; margin:6px 0 4px; background:#08131A; border:1px solid var(--line); }
-  .pod .vitals{ display:flex; justify-content:space-between; font-size:10px; color:var(--dim); }
+  .pod .ecg{ width:100%; height:34px; display:block; margin:5px 0 4px; background:#08131A; border:1px solid var(--line); flex:none; }
+  .pod .vitals{ display:flex; justify-content:space-between; gap:5px; font-size:9px; color:var(--dim); white-space:nowrap; }
   .pod .vitals b{ color:var(--vitals); font-weight:500; }
   .pod .vitals .bpm{ color:var(--clinical); }
   .pod .spec{ width:100%; height:12px; display:block; margin-top:5px; }
 
-  #stage{ grid-column:2; grid-row:2; position:relative; background:linear-gradient(180deg,#0C1A22,#07121A); }
+  #stage{ grid-column:1; grid-row:2; position:relative; background:linear-gradient(180deg,#0C1A22,#07121A); min-height:0; }
+  #stage::after{ content:''; position:absolute; inset:0; pointer-events:none; background:radial-gradient(circle at 50% 48%, rgba(79,163,199,0.16), transparent 42%); mix-blend-mode:screen; opacity:var(--audio-glow,0.25); }
   #stage canvas{ display:block; width:100%; height:100%; }
   #stage .cap{ position:absolute; top:16px; left:20px; font-size:11px; color:var(--dim); letter-spacing:0.14em; }
   #stage .cap b{ color:var(--clinical); }
@@ -65,6 +66,15 @@
   #boot-btn{ font-family:'IBM Plex Sans',sans-serif; font-weight:600; font-size:15px; background:var(--clinical); border:1px solid var(--clinical); color:#fff; padding:13px 32px; cursor:pointer; }
   #boot-btn:hover{ background:#245b76; }
   .hidden{ display:none !important; }
+  @media (max-width:900px){
+    #app{ grid-template-rows:50px minmax(0,1fr) 164px; }
+    #pods{ grid-template-columns:repeat(3, minmax(120px,1fr)); overflow:auto; }
+  }
+  @media (max-width:520px){
+    #app{ grid-template-rows:50px minmax(0,1fr) 220px; }
+    #topbar .sub{ display:none; }
+    #pods{ grid-template-columns:repeat(2, minmax(126px,1fr)); }
+  }
 </style>
 </head>
 <body>
@@ -101,6 +111,16 @@
   'use strict';
   const engine = new ShipAudioEngine({ fftSize: 2048, smoothing: 0.8 });
   let spatialEnabled=true, standardEnabled=true;
+  const soundCfg = { heartPitch:1400, heartGain:1, heartDuration:0.09, bpmScale:1, spatialPulseGain:1 };
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, Number(v))); }
+  window.__shipPanelConfig = function(cfg){
+    if(!cfg) return;
+    if(cfg.heartPitch != null) soundCfg.heartPitch = clamp(cfg.heartPitch, 280, 2600);
+    if(cfg.heartGain != null) soundCfg.heartGain = clamp(cfg.heartGain, 0, 1.5);
+    if(cfg.heartDuration != null) soundCfg.heartDuration = clamp(cfg.heartDuration, 0.03, 0.35);
+    if(cfg.bpmScale != null) soundCfg.bpmScale = clamp(cfg.bpmScale, 0.4, 2);
+    if(cfg.spatialPulseGain != null) soundCfg.spatialPulseGain = clamp(cfg.spatialPulseGain, 0, 1.5);
+  };
   document.getElementById('toggle-spatial').addEventListener('click', function(){ spatialEnabled=!spatialEnabled; this.classList.toggle('on',spatialEnabled); });
   document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
   document.getElementById('boot-btn').addEventListener('click', async function(){
@@ -159,18 +179,35 @@
   const body=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,3.4,24,1,true), bodyMat); body.rotation.z=Math.PI/2; capsule.add(body);
   const capA=new THREE.Mesh(new THREE.SphereGeometry(1.1,20,12,0,Math.PI*2,0,Math.PI/2), bodyMat.clone()); capA.rotation.z=-Math.PI/2; capA.position.x=1.7; capsule.add(capA);
   const capB=new THREE.Mesh(new THREE.SphereGeometry(1.1,20,12,0,Math.PI*2,0,Math.PI/2), bodyMat.clone()); capB.rotation.z=Math.PI/2; capB.position.x=-1.7; capsule.add(capB);
+  const bodyParts=[body,capA,capB];
   // occupant glow
   const occupant=new THREE.Mesh(new THREE.IcosahedronGeometry(0.7,1), new THREE.MeshBasicMaterial({ color:0xF2586E, transparent:true, opacity:0.32 }));
   capsule.add(occupant);
   const frostRing=new THREE.Mesh(new THREE.TorusGeometry(1.25,0.02,8,40), new THREE.MeshBasicMaterial({ color:0xB8D8DD, transparent:true, opacity:0.7 }));
   frostRing.rotation.y=Math.PI/2; capsule.add(frostRing);
+  const audioRingMat=new THREE.MeshBasicMaterial({ color:0xF2586E, transparent:true, opacity:0.16, wireframe:true });
+  const audioRings=[];
+  for(let i=0;i<4;i++){
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.38+i*0.18,0.012,8,56), audioRingMat.clone());
+    ring.rotation.y=Math.PI/2; ring.rotation.x=i*0.42; capsule.add(ring); audioRings.push(ring);
+  }
 
-  function resize(){ const w=stageEl.clientWidth,h=stageEl.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/Math.max(h,1); camera.updateProjectionMatrix(); sizePodCanvases(); }
+  function resize(){
+    const w=Math.max(1,stageEl.clientWidth),h=Math.max(1,stageEl.clientHeight);
+    renderer.setSize(w,h,false); camera.aspect=w/Math.max(h,1); camera.updateProjectionMatrix(); sizePodCanvases();
+  }
+  function resizeSoon(){
+    resize();
+    setTimeout(resize, 80);
+    setTimeout(resize, 220);
+    setTimeout(resize, 420);
+  }
   window.addEventListener('resize', resize);
+  if(window.ResizeObserver){ new ResizeObserver(resize).observe(stageEl); }
 
   // ---------- loop ----------
   let running=false;
-  function startAll(){ resize(); running=true; requestAnimationFrame(loop); }
+  function startAll(){ resizeSoon(); running=true; requestAnimationFrame(loop); }
 
   function drawEcg(p){
     const c=p.ecgCanvas, x=p.ecgCtx, w=c.width, h=c.height; if(!w||!h) return;
@@ -197,20 +234,23 @@
     if(!running) return; requestAnimationFrame(loop);
     const time=t*0.001;
     const freq=engine.getFrequencyData();
+    const level=engine.getLevel();
 
     pods.forEach((p,i)=>{
+      let s=0,c=0; for(let b=p.binLo;b<p.binHi;b++){ s+=freq[b]; c++; }
+      p.audioAmp = c ? s/(c*255) : 0;
       // slow stability drift
-      p.stability += ((0.8 - (i===2?0.25:0)) - p.stability)*0.004 + (Math.random()-0.5)*0.003;
+      p.stability += ((0.8 - (i===2?0.25:0) - p.audioAmp*0.05) - p.stability)*0.004 + (Math.random()-0.5)*0.003;
       p.stability=Math.max(0.35,Math.min(1,p.stability));
-      const beatInterval=60/p.bpm;
+      const beatInterval=60/(p.bpm*soundCfg.bpmScale);
       // advance beat phase from real time (deterministic per-pod rhythm)
       const phase=((time + p.beatPhase*beatInterval) % beatInterval)/beatInterval;
       // detect beat crossing (phase wrapped)
       if(phase < (p._lastPhase||0)){
         // heartbeat! amplitude modulated by stability
-        const gain=0.12+p.stability*0.22;
-        if(standardEnabled) engine.pingStandard({ freq: 1400, pan: Math.cos(p.ang), duration:0.09, type:'sine', gain });
-        if(spatialEnabled){ const v=engine.createSpatialVoice({ freq:1400, type:'sine' }); v.setPosition(Math.cos(p.ang)*3, 0, Math.sin(p.ang)*3); v.setGain(gain); setTimeout(()=>v.stop(0.05), 90); }
+        const gain=(0.12+p.stability*0.22)*soundCfg.heartGain;
+        if(standardEnabled) engine.pingStandard({ freq: soundCfg.heartPitch, pan: Math.cos(p.ang), duration:soundCfg.heartDuration, type:'sine', gain });
+        if(spatialEnabled){ const v=engine.createSpatialVoice({ freq:soundCfg.heartPitch, type:'sine' }); v.setPosition(Math.cos(p.ang)*3, 0, Math.sin(p.ang)*3); v.setGain(gain*soundCfg.spatialPulseGain); setTimeout(()=>v.stop(0.05), soundCfg.heartDuration*1000); }
       }
       p._lastPhase=phase;
       // push ecg sample
@@ -219,6 +259,7 @@
       const warn=p.stability<0.55;
       p.stateEl.textContent=warn?'UNSTABLE':'STASIS'; p.stateEl.classList.toggle('warn',warn);
       p.stabEl.textContent=(p.stability*100).toFixed(0);
+      p.card.style.boxShadow = p.audioAmp>0.08 ? `0 0 ${Math.round(4+p.audioAmp*18)}px rgba(79,163,199,${0.12+p.audioAmp*0.35})` : '';
     });
 
     // central capsule reflects selected pod
@@ -226,10 +267,24 @@
     const beatInterval=60/sp.bpm;
     const phase=((time + sp.beatPhase*beatInterval) % beatInterval)/beatInterval;
     const pulse = phase<0.1 ? 1 - phase/0.1 : 0;
-    occupant.scale.setScalar(0.9 + pulse*0.5*sp.stability + Math.sin(time*0.6)*0.03);
-    occupant.material.opacity=0.2+pulse*0.4;
-    capsule.rotation.y=Math.sin(time*0.25)*0.35;
-    frostRing.rotation.z+=0.01;
+    const amp=Math.min(1,(sp.audioAmp||0)*1.8 + level*1.2);
+    stageEl.style.setProperty('--audio-glow', (0.18+amp*0.82).toFixed(3));
+    occupant.scale.setScalar(0.86 + pulse*0.45*sp.stability + amp*0.7 + Math.sin(time*0.6)*0.03);
+    occupant.material.opacity=0.18+pulse*0.38+amp*0.34;
+    bodyParts.forEach((part,i)=>{
+      part.material.opacity=0.45 + amp*0.42;
+      part.scale.setScalar(1 + amp*(0.08+i*0.025));
+    });
+    capsule.scale.setScalar(1 + amp*0.12);
+    capsule.rotation.y=Math.sin(time*0.25)*0.35 + Math.sin(time*1.4)*amp*0.08;
+    frostRing.rotation.z+=0.01+amp*0.045;
+    frostRing.scale.setScalar(1+amp*0.35);
+    frostRing.material.opacity=0.42+amp*0.5;
+    audioRings.forEach((ring,i)=>{
+      ring.rotation.z += 0.004 + amp*(0.012+i*0.004);
+      ring.scale.setScalar(0.92 + amp*(0.55+i*0.14) + Math.sin(time*2+i)*0.025);
+      ring.material.opacity = 0.05 + amp*(0.18+i*0.035);
+    });
     document.getElementById('sel-name').textContent=sp.name+'  ·  '+sp.id;
     document.getElementById('sel-sub').textContent=`${sp.bpm.toFixed(0)} BPM · STABILITY ${(sp.stability*100).toFixed(0)}% · ${sp.temp.toFixed(0)}°C`;
 

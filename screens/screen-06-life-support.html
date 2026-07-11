@@ -20,7 +20,7 @@
   html,body{ margin:0; width:100%; height:100%; background:var(--void); color:var(--bone);
     font-family:'Fira Code',monospace; overflow:hidden; }
   .disp{ font-family:'Manrope',sans-serif; font-weight:600; letter-spacing:0.04em; }
-  #viewport{ position:fixed; inset:0; }
+  #viewport{ position:fixed; left:0; right:0; top:0; bottom:174px; }
   #viewport canvas{ display:block; width:100%; height:100%; }
 
   #topbar{ position:fixed; top:0; left:0; right:0; height:44px; z-index:5; display:flex; align-items:center; justify-content:space-between; padding:0 20px;
@@ -33,8 +33,8 @@
   #topbar .dot.synth{ background:var(--blue); box-shadow:0 0 6px var(--blue); }
 
   /* zone readouts arranged in a ring */
-  #zones{ position:fixed; inset:0; z-index:4; pointer-events:none; }
-  .zone{ position:absolute; width:132px; transform:translate(-50%,-50%); text-align:center; }
+  #zones{ position:fixed; left:0; right:0; bottom:96px; height:78px; z-index:4; pointer-events:none; display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; padding:8px 12px; background:rgba(7,20,16,0.86); border-top:1px solid var(--line); }
+  .zone{ position:relative; width:auto; transform:none; text-align:center; background:rgba(18,36,29,0.55); border:1px solid var(--line); padding:7px 8px; min-width:0; }
   .zone .name{ font-family:'Manrope',sans-serif; font-weight:600; font-size:11px; letter-spacing:0.1em; color:var(--bone); }
   .zone .grid{ display:grid; grid-template-columns:1fr 1fr; gap:2px 8px; margin-top:4px; font-size:10px; color:var(--dim); }
   .zone .grid b{ color:var(--blue); font-weight:500; }
@@ -45,7 +45,7 @@
   #spectral canvas{ display:block; width:100%; height:100%; }
   #spectral .lbl{ position:absolute; top:8px; left:16px; font-size:10px; color:var(--dim); letter-spacing:0.15em; }
 
-  #breath{ position:fixed; bottom:104px; left:50%; transform:translateX(-50%); z-index:4; font-size:10px; color:var(--dim); letter-spacing:0.2em; }
+  #breath{ position:fixed; bottom:182px; left:50%; transform:translateX(-50%); z-index:4; font-size:10px; color:var(--dim); letter-spacing:0.2em; }
   #breath b{ color:var(--oxygen); }
 
   .float-controls{ position:fixed; top:52px; right:14px; z-index:6; background:rgba(7,20,16,0.85); border:1px solid var(--line); padding:10px 12px; display:flex; flex-direction:column; gap:8px; min-width:196px; }
@@ -97,6 +97,17 @@
   'use strict';
   const engine = new ShipAudioEngine({ fftSize: 2048, smoothing: 0.85 });
   let spatialEnabled=true, standardEnabled=true;
+  const soundCfg = { alarmThreshold:0.11, zoneVoicePitch:520, zoneVoiceGain:1, chimePitch:660, chimeGap:2.4, chimeGain:1 };
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, Number(v))); }
+  window.__shipPanelConfig = function(cfg){
+    if(!cfg) return;
+    if(cfg.alarmThreshold != null) soundCfg.alarmThreshold = clamp(cfg.alarmThreshold, 0.05, 0.2);
+    if(cfg.zoneVoicePitch != null) soundCfg.zoneVoicePitch = clamp(cfg.zoneVoicePitch, 180, 1000);
+    if(cfg.zoneVoiceGain != null) soundCfg.zoneVoiceGain = clamp(cfg.zoneVoiceGain, 0, 1.4);
+    if(cfg.chimePitch != null) soundCfg.chimePitch = clamp(cfg.chimePitch, 220, 1400);
+    if(cfg.chimeGap != null) soundCfg.chimeGap = clamp(cfg.chimeGap, 0.4, 5);
+    if(cfg.chimeGain != null) soundCfg.chimeGain = clamp(cfg.chimeGain, 0, 1.4);
+  };
   document.getElementById('toggle-spatial').addEventListener('click', function(){ spatialEnabled=!spatialEnabled; this.classList.toggle('on',spatialEnabled); });
   document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
   document.getElementById('boot-btn').addEventListener('click', async function(){
@@ -149,8 +160,7 @@
   }
 
   function layoutZones(){
-    const cx=window.innerWidth/2, cy=window.innerHeight/2, R=Math.min(cx,cy)*0.62;
-    zones.forEach((z,i)=>{ const a=z.ang - Math.PI/2; z.card.style.left=(cx+Math.cos(a)*R)+'px'; z.card.style.top=(cy+Math.sin(a)*R)+'px'; });
+    zones.forEach(z=>{ z.card.style.left=''; z.card.style.top=''; });
   }
   function resize(){ const w=vpEl.clientWidth,h=vpEl.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/Math.max(h,1); camera.updateProjectionMatrix(); layoutZones(); resizeSpectral(); }
   window.addEventListener('resize', resize);
@@ -198,7 +208,7 @@
       z.o2  += (21 - amp*3.5 - z.o2)*0.02;
       z.temp+= (21 + amp*6 - z.temp)*0.02;
       z.rh  += (44 + Math.sin(time*0.2+i)*6 - z.rh)*0.02;
-      const bad = z.co2>0.11 || z.o2<18.5;
+      const bad = z.co2>soundCfg.alarmThreshold || z.o2<18.5;
       z.quality += ((bad?0:1)-z.quality)*0.08;
       z.marker.material.color.setHex(bad ? 0xFF8566 : 0x7FD858);
       z.marker.scale.y = 1 + (bad?Math.abs(Math.sin(time*5))*0.6:0);
@@ -209,8 +219,8 @@
       z.card.querySelector('.rh').textContent=z.rh.toFixed(0);
 
       if(bad){
-        if(spatialEnabled){ if(!z.voice){ z.voice=engine.createSpatialVoice({ freq:520, type:'sine' }); _v.set(Math.cos(z.ang)*4,0.3,Math.sin(z.ang)*4); z.voice.setPosition(_v.x,_v.y,_v.z); } z.voice.setGain(0.25+Math.abs(Math.sin(time*4))*0.15); }
-        if(standardEnabled && time-z.lastChime>2.4){ z.lastChime=time; engine.pingStandard({ freq:660, pan:Math.cos(z.ang), duration:0.5, type:'sine', gain:0.28 }); }
+        if(spatialEnabled){ if(!z.voice){ z.voice=engine.createSpatialVoice({ freq:soundCfg.zoneVoicePitch, type:'sine' }); _v.set(Math.cos(z.ang)*4,0.3,Math.sin(z.ang)*4); z.voice.setPosition(_v.x,_v.y,_v.z); } z.voice.setFrequency(soundCfg.zoneVoicePitch); z.voice.setGain((0.25+Math.abs(Math.sin(time*4))*0.15)*soundCfg.zoneVoiceGain); }
+        if(standardEnabled && time-z.lastChime>soundCfg.chimeGap){ z.lastChime=time; engine.pingStandard({ freq:soundCfg.chimePitch, pan:Math.cos(z.ang), duration:0.5, type:'sine', gain:0.28*soundCfg.chimeGain }); }
       } else if(z.voice){ z.voice.stop(); z.voice=null; }
     });
 

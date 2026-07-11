@@ -72,14 +72,20 @@ Follow the same two-pass approach used for screen 1 (Comms Array):
    automatically.
 5. Register it in `app.html` too: add a `MODULES` entry
    (`{ id, title, sub, file, accent }`) so it appears in the Bridge Console.
+   Optionally add a `PANEL_CONTROLS[<id>]` array so the pane gets a live sound-
+   tuning **CTL** panel (see the console hook section for the `__shipPanelConfig`
+   contract).
 6. **Include the console hook** and the shared ids it depends on (see below).
 7. Update the status table in `README.md`.
 
 ## Bridge Console (`app.html`) + the embed hook
 
-`app.html` is the default entry: it loads all 10 screens as `<iframe>`s
-(each with `?embed=1`) into one window, in Solo/Duo/Trio layouts. A new
-screen works there for free **as long as it follows these conventions**:
+`app.html` is the default entry: it loads all 10 screens as `<iframe>`s (each
+with `?embed=1`) into one window, in Solo / Duo / Trio / Grid layouts (Grid is
+a 4×3 wall of pure-visualizer thumbnails via the hook's `minimal` mode). It also
+has a top-bar media deck (load an audio/video file to drive every pane) and
+per-pane VOL / RX (reactivity) / CTL controls. A new screen works there for free
+**as long as it follows these conventions**:
 
 - Load the hook right after the audio engine:
   `<script src="../shared/embed.js"></script>` (after
@@ -94,11 +100,30 @@ screen works there for free **as long as it follows these conventions**:
   (i.e. call `requestAnimationFrame(loop)`, don't cache a local reference) —
   the hook wraps it to throttle rail previews to a low frame rate.
 
-The hook exposes `window.__shipBoot()` and `window.__shipConfig({fps,volume})`
-on each embedded screen; the shell calls them directly (same-origin, so a
-single user gesture in `app.html` boots every pane). Volume works because
-`audio-engine.js` publishes the live instance as `window.__shipEngine`.
-`?embed=1` changes nothing when a screen is opened standalone.
+The hook exposes on each embedded screen:
+
+- `window.__shipBoot()` — boots the screen (clicks `#boot-btn`).
+- `window.__shipConfig({ fps, volume, reactivity, panel, minimal })` — the
+  shell's per-pane control channel. `reactivity` scales the analysis data the
+  screen sees (see the engine API below); `panel` is forwarded to the screen's
+  own `__shipPanelConfig` (see next point); `minimal: true` is the Grid
+  thumbnail mode — the hook promotes the screen's WebGL `<canvas>` to fill the
+  frame and hides text chrome, so **the main visualizer must be a WebGL canvas**
+  (every screen's Three.js renderer already is) and must refit on a
+  `window` `resize` event.
+
+The shell calls these directly (same-origin, so a single user gesture in
+`app.html` boots every pane). Volume/reactivity work because `audio-engine.js`
+publishes the live instance as `window.__shipEngine`. `?embed=1` changes nothing
+when a screen is opened standalone.
+
+**Optional per-screen sound tuning (`window.__shipPanelConfig`):** a screen may
+define `window.__shipPanelConfig = function(cfg){ ... }` to accept live-tunable
+sonification parameters (pitch, gain, thresholds, rates, etc.). The Bridge
+Console's per-pane **CTL** panel drives it; the parameter list for a screen lives
+in `app.html`'s `PANEL_CONTROLS[<screen-id>]` array (key/label/min/max/step/
+value/kind). This is optional — a screen without the hook simply has no CTL
+panel — but preferred for new screens so they're tunable in the console.
 
 ## Shared audio engine API (`shared/audio-engine.js`, `window.ShipAudioEngine`)
 
@@ -122,12 +147,55 @@ engine.setSpatialGain(0.8);            // master bus levels
 engine.setStandardGain(0.5);
 ```
 
-Don't add new public methods to this file casually — if a screen needs
+**Reactivity note (important for screens):** `getFrequencyData()` and
+`getTimeDomainData()` return **reactivity-scaled copies**, not the raw analyser
+arrays — every value is multiplied by the current audio-reactivity amount
+(`setAudioReactivity(0..2)`, default 1, driven by the console's RX slider /
+`__shipConfig({reactivity})`). At `1` this is a no-op passthrough; a screen just
+reads the returned arrays as before. Don't cache the returned array across frames
+assuming it's the raw buffer, and don't re-apply your own reactivity scaling on
+top.
+
+### Shell-facing API (media source, reactivity, sonic profile)
+
+These exist so the shell (`app.html`) and the engine's own auto-injected **File
+Deck** can swap the audio *source* and shape the generated sound at runtime.
+Screens generally don't call these — they're the console's control surface — but
+they're part of the engine's public contract:
+
+```js
+// Media file as the audio source (analysed just like the mic).
+await engine.loadMediaFile(file);                      // File/Blob from an <input> or drop
+engine.mediaTransport({ action: 'play' });             // 'play'|'pause'|'toggle'|'restart'|'seek'|'seekRatio'
+engine.configureMedia({ audible: true, loop: true,     // file's own audio + looping
+                        effect: 'reverb', cutoff: 4000, pitch: 0 }); // pass-through FX
+engine.getMediaState();                                // { loaded, fileName, playing, currentTime, duration, ... }
+//   effect ∈ none|filter|delay|reverb|chorus|flange|pitch
+
+// Analysis reactivity (scales getFrequencyData/getTimeDomainData/getLevel output).
+engine.setAudioReactivity(1.4);  engine.getAudioReactivity();
+
+// Sonic profile — shapes the generated-sound effects chain the sonification
+// voices run through (tone/movement/texture/pulse/drift/space 0..1, plus
+// pitch, cutoff, modRate, delay/flange/phaser/grain mixes).
+engine.setSonicProfile({ tone: 0.6, space: 0.4, cutoff: 9000 });
+engine.getSonicProfile();
+```
+
+Each of the above is also mirrored on `window` for the same-origin shell:
+`__shipLoadMediaFile`, `__shipMediaTransport`, `__shipMediaConfig`,
+`__shipMediaState`, `__shipReactivityConfig`, `__shipSoundConfig`,
+`__shipSoundState`. The engine auto-injects the standalone File Deck UI into any
+page after boot; the console hides it (`?embed=1`) and drives the engine from its
+own top-bar media controls instead.
+
+Don't add new public methods to this file casually — if a *screen* needs
 something the engine doesn't do (e.g. transient/spike detection, harmonic
 analysis), implement that *in the screen's own script*, computed from
 `getFrequencyData()` / `getTimeDomainData()`, rather than growing the shared
-engine. Keep the engine limited to: source acquisition, raw analysis data,
-and generic voice/ping primitives.
+engine. Keep the engine limited to: source acquisition (mic/media/synth), raw
+analysis data, generic voice/ping primitives, and the shell-facing
+media/reactivity/sonic-profile controls above.
 
 ## Local dev
 
@@ -143,8 +211,11 @@ double-clicking the file) whenever you need to test live microphone input —
 
 - [ ] Opens with no console errors both via `file://` and via local server
 - [ ] Works with mic permission denied (falls back to synth cleanly)
-- [ ] Resizes correctly (all canvases/renderers respond to `window.resize`)
+- [ ] Reacts to a loaded media file via the File Deck (drop in an audio file)
+- [ ] Resizes correctly (all canvases/renderers respond to `window.resize`),
+      including when promoted to full-frame in the console's Grid (minimal) mode
 - [ ] Spatial and standard sonification toggles both function independently
 - [ ] Distinct palette/type/layout/signature from every other built screen
 - [ ] No use of `THREE.CapsuleGeometry` or other post-r128 APIs
-- [ ] Registered in `launcher.html`, status table updated in `README.md`
+- [ ] Registered in `launcher.html` and `app.html` (`MODULES`); status table
+      updated in `README.md`

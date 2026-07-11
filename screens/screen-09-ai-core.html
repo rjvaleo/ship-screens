@@ -20,7 +20,7 @@
   html,body{ margin:0; width:100%; height:100%; background:var(--void); color:var(--white);
     font-family:'Red Hat Mono','JetBrains Mono',monospace; overflow:hidden; }
   .disp{ font-family:'Archivo',sans-serif; font-weight:700; letter-spacing:0.16em; transform:scaleX(1.12); transform-origin:left; }
-  #viewport{ position:fixed; inset:0; }
+  #viewport{ position:fixed; left:0; right:0; top:0; bottom:132px; }
   #viewport canvas{ display:block; width:100%; height:100%; position:absolute; inset:0; }
   #radial-canvas{ pointer-events:none; }
 
@@ -34,10 +34,10 @@
   #topbar .dot.synth{ background:var(--pink); box-shadow:0 0 6px var(--pink); }
 
   /* process log */
-  #proclog{ position:fixed; top:56px; left:14px; z-index:5; width:280px; height:calc(100% - 72px);
-    background:rgba(4,7,10,0.5); border-left:2px solid var(--cyan); padding:12px 14px; overflow:hidden; }
-  #proclog h2{ margin:0 0 10px; font-family:'Archivo',sans-serif; font-size:10px; letter-spacing:0.18em; color:var(--dim); font-weight:700; }
-  .plog{ font-size:10px; line-height:1.7; color:var(--dim); }
+  #proclog{ position:fixed; left:0; right:0; bottom:0; z-index:5; width:auto; height:132px;
+    background:rgba(4,7,10,0.88); border-top:1px solid var(--line); border-left:2px solid var(--cyan); padding:10px 14px; overflow:hidden; display:grid; grid-template-columns:180px 1fr; gap:12px; }
+  #proclog h2{ margin:0; font-family:'Archivo',sans-serif; font-size:10px; letter-spacing:0.18em; color:var(--dim); font-weight:700; }
+  .plog{ font-size:10px; line-height:1.55; color:var(--dim); column-count:3; column-gap:18px; }
   .plog .row b{ color:var(--cyan); }
   .plog .row.think b{ color:var(--pink); }
 
@@ -90,6 +90,17 @@
   'use strict';
   const engine = new ShipAudioEngine({ fftSize: 2048, smoothing: 0.7 });
   let spatialEnabled=true, standardEnabled=true;
+  const soundCfg = { blipPitch:1, blipGain:1, blipGap:0.08, voiceGain:1, cascadeDepth:3, triggerSensitivity:0.25 };
+  function clamp(v,min,max){ return Math.max(min, Math.min(max, Number(v))); }
+  window.__shipPanelConfig = function(cfg){
+    if(!cfg) return;
+    if(cfg.blipPitch != null) soundCfg.blipPitch = clamp(cfg.blipPitch, 0.35, 2.8);
+    if(cfg.blipGain != null) soundCfg.blipGain = clamp(cfg.blipGain, 0, 1.6);
+    if(cfg.blipGap != null) soundCfg.blipGap = clamp(cfg.blipGap, 0.02, 0.35);
+    if(cfg.voiceGain != null) soundCfg.voiceGain = clamp(cfg.voiceGain, 0, 1.5);
+    if(cfg.cascadeDepth != null) soundCfg.cascadeDepth = Math.round(clamp(cfg.cascadeDepth, 1, 5));
+    if(cfg.triggerSensitivity != null) soundCfg.triggerSensitivity = clamp(cfg.triggerSensitivity, 0.1, 0.8);
+  };
   document.getElementById('toggle-spatial').addEventListener('click', function(){ spatialEnabled=!spatialEnabled; this.classList.toggle('on',spatialEnabled); });
   document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
   document.getElementById('boot-btn').addEventListener('click', async function(){
@@ -183,14 +194,14 @@
   function fireNode(i, intensity, depth, time){
     const nd=nodes[i]; nd.level=Math.max(nd.level, intensity);
     // thought blip (throttled), pitch from position hash
-    if(depth===0 && standardEnabled && time-lastBlip>0.08){ lastBlip=time; engine.pingStandard({ freq:nd.freq, pan:nd.x/4, duration:0.14, type:'sine', gain:0.14+intensity*0.12 }); }
+    if(depth===0 && standardEnabled && time-lastBlip>soundCfg.blipGap){ lastBlip=time; engine.pingStandard({ freq:nd.freq*soundCfg.blipPitch, pan:nd.x/4, duration:0.14, type:'sine', gain:(0.14+intensity*0.12)*soundCfg.blipGain }); }
     if(depth===0 && spatialEnabled){
-      const v=engine.createSpatialVoice({ freq:nd.freq, type:'sine' });
-      v.setPosition(nd.x, nd.y, nd.z); v.setGain(0.35);
+      const v=engine.createSpatialVoice({ freq:nd.freq*soundCfg.blipPitch, type:'sine' });
+      v.setPosition(nd.x, nd.y, nd.z); v.setGain(0.35*soundCfg.voiceGain);
       // pan from source node toward the listener (origin) over its brief life
       let step=0; const iv=setInterval(()=>{ step+=0.2; v.setPosition(nd.x*(1-step), nd.y*(1-step), nd.z*(1-step)); if(step>=1){ clearInterval(iv); v.stop(0.08); } }, 40);
     }
-    if(depth<3 && intensity>0.25){
+    if(depth<soundCfg.cascadeDepth && intensity>soundCfg.triggerSensitivity){
       nd.nbrs.forEach(j=>{ setTimeout(()=>{ if(running) fireNode(j, intensity*0.6, depth+1, performance.now()*0.001); }, 70+Math.random()*60); });
     }
   }
