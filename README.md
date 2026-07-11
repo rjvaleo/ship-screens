@@ -3,21 +3,24 @@
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=fff)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=fff)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES6-F7DF1E?logo=javascript&logoColor=000)
-![Three.js](https://img.shields.io/badge/Three.js-r128-000?logo=threedotjs&logoColor=fff)
+![Vite](https://img.shields.io/badge/Vite-6-646CFF?logo=vite&logoColor=fff)
+![Three.js](https://img.shields.io/badge/Three.js-r128%20%2B%20npm%200.185-000?logo=threedotjs&logoColor=fff)
 ![Web Audio API](https://img.shields.io/badge/Web%20Audio%20API-spatial%20%2B%20FFT-8B5CF6)
 
-![Build](https://img.shields.io/badge/build-none%20(open%20the%20file)-success)
-![Dependencies](https://img.shields.io/badge/npm%20dependencies-0-brightgreen)
-![Runtime](https://img.shields.io/badge/runtime-file%3A%2F%2F%20%2B%20localhost-blue)
+![Build](https://img.shields.io/badge/build-Vite-success)
+![Tests](https://img.shields.io/badge/tests-Vitest%20%2B%20Playwright-4A7B9D)
+![Node](https://img.shields.io/badge/Node-20.11%2B-339933?logo=nodedotjs&logoColor=fff)
+![Runtime](https://img.shields.io/badge/runtime-localhost%3A8000-blue)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-4A7B9D)
 ![Browsers](https://img.shields.io/badge/browsers-Chrome%20%7C%20Edge%20%7C%20Safari-2D9C6A)
 ![Screens](https://img.shields.io/badge/screens-10%20%2F%2010%20online-brightgreen)
 ![Status](https://img.shields.io/badge/status-complete-brightgreen)
 
 > Handing this to Claude Code (or another agent)? Start with **CLAUDE.md** /
-> **AGENTS.md** (identical — conventions, hard constraints, shared audio API
-> reference) and **ROADMAP.md** (the design brief for each screen). This file
-> covers setup and what's already built.
+> **AGENTS.md** (companion contributor briefs with conventions, hard
+> constraints, and the shared audio API reference) and **ROADMAP.md** (the
+> design record for each screen). This file covers setup and what's already
+> built.
 
 A set of 10 sci-fi ship data screens — each a self-contained HTML file with
 3D animation (Three.js), a live spectrograph/waterfall, an oscilloscope, and
@@ -44,23 +47,46 @@ Two ways to run them:
 - **`launcher.html` — the multi-window deck**: assign any screen to any of 10
   slots and pop each out as its own OS-level window to tile across a desktop.
 
+## Current highlights
+
+- **Bridge Console wall:** Solo / Duo / Trio / Grid layouts, rail promotion,
+  Grid spotlight focus, persistent panes, per-pane volume/reactivity, and
+  master fullscreen/mute controls.
+- **Live tuning:** every pane can expose module-specific CTL controls as sliders
+  or Grid knobs. Recent additions include Life Support air-vent hiss controls
+  and Cryo Bay selectable pod user-data waveforms.
+- **Shared media drive:** load one audio/video file in the console and all ten
+  screens analyse/react to it together while audible playback comes from only
+  the primary pane.
+- **Fallback synth:** when mic access is denied or absent, each screen falls
+  back to the built-in procedural signal bed so the visualizers and sonification
+  stay alive.
+- **Modern dev loop:** Vite build/dev/preview, Vitest unit tests, Playwright
+  browser regression tests, optional GA hook, and a lightweight Python static
+  server fallback for the current screens.
+
 ## Tech stack
 
-Everything runs in the browser with **no build step, no bundler, and zero npm
-dependencies** — the entire toolchain is "open an HTML file." That constraint is
-deliberate (see CLAUDE.md); the choices below all follow from it.
+Everything runs in the browser through the project server. The app is now a
+Vite multi-page project: top-level pages and every `screens/*.html` file are
+treated as independent entries, while the existing screens still mostly use
+their original plain-script/r128 Three.js style. New screens can use ES modules
+and the npm `three` package.
 
 | Layer | Technology | Notes |
 |-------|-----------|-------|
 | **Markup / styling** | HTML5, CSS3 | One self-contained `.html` per screen; all CSS inline. CSS Grid for layout, custom properties for each screen's palette tokens. |
 | **Language** | Vanilla JavaScript (ES6+) | No framework, no TypeScript, no transpile. Screen logic is inline; only the audio engine is shared. |
-| **3D rendering** | [Three.js](https://threejs.org/) **r128** | Loaded as a global `THREE` from cdnjs (UMD build). Pinned to r128 — the last version with a simple non-module build that works over `file://`. Note: no `THREE.CapsuleGeometry` at this version. |
+| **Build / dev server** | [Vite 6](https://vite.dev/) | Multi-page app config: every top-level page and every `screens/*.html` file builds as an independent entry. Dev server runs on `http://localhost:8000`. |
+| **3D rendering** | [Three.js](https://threejs.org/) | Existing screens load r128 as a global `THREE` from cdnjs; new work can import from the npm `three` package through Vite. |
 | **Audio** | [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) | FFT analysis (`AnalyserNode`), 3D spatial audio via HRTF `PannerNode`, stereo pings via `StereoPannerNode`, procedural synth fallback via `OscillatorNode` + filtered `AudioBufferSourceNode` noise. Media/file playback routed through an effects chain (`BiquadFilter`, `DelayNode`, `ConvolverNode` reverb, modulated-delay chorus/flange, playback-rate pitch). |
-| **Audio input** | `getUserMedia` (live mic), **dropped audio/video file**, or synth | Three interchangeable sources: live mic, a media file you load via the File Deck, or a procedural "deep space signal" synth bed. Falls back automatically to synth when no mic / permission denied / `file://` origin. |
+| **Audio input** | `getUserMedia` (live mic), **dropped audio/video file**, or synth | Three interchangeable sources: live mic, a media file you load via the File Deck, or a procedural "deep space signal" synth bed. Falls back automatically to synth when no mic is available or permission is denied. |
 | **2D drawing** | Canvas 2D | Spectrograph waterfall and oscilloscope are plain `<canvas>` + `CanvasRenderingContext2D`. |
 | **Typography** | Google Fonts (CDN) | Per-screen display + mono pairings, assigned in ROADMAP.md so no two screens collide. |
 | **Windowing** | `window.open()` | The launcher spawns each screen as a separate OS-level browser window for desktop tiling. |
-| **Local dev** | Python `http.server` | Any static file server works; needed only for live-mic testing (secure-context requirement). |
+| **Server API** | Vite plugin + Python fallback | `server/presets.js` provides `/api/health` and `/api/presets` under Vite; `server.py` provides the same lightweight API for static serving. |
+| **Testing** | [Vitest](https://vitest.dev/) + [Playwright](https://playwright.dev/) | Unit tests cover preset storage; e2e tests cover Bridge Console spotlight, rail promotion, embedded layout, and module-control regressions. |
+| **Optional analytics** | GA4 hook | `shared/analytics.js` no-ops until `VITE_GA_ID` is provided. |
 
 **Shared code:** two plain, non-module scripts. [`shared/audio-engine.js`](shared/audio-engine.js)
 (`window.ShipAudioEngine`) provides source acquisition (mic / media file /
@@ -71,45 +97,89 @@ Deck** UI. [`shared/embed.js`](shared/embed.js) is the console hook activated by
 volume, reactivity, mute, per-screen panel config, and "minimal" (thumbnail)
 mode from the console. Screens are otherwise fully independent.
 
-**No dependencies to install.** The only external loads at runtime are the
-Three.js CDN script and the Google Fonts stylesheets.
+## Install packages
+
+This repo now includes `package.json` and `package-lock.json`. Use Node
+**20.11+**.
+
+For a fresh clone or CI, install the locked package set:
+
+```
+npm ci
+```
+
+For local development when updating packages, `npm install` is also fine:
+
+```
+npm install
+```
+
+That installs:
+
+| Package | Why it is needed |
+|---------|------------------|
+| `three` | npm Three.js package for modern/new module-based screens. |
+| `vite` | local dev server, multi-page build, and static preview. |
+| `vitest` + `happy-dom` | unit tests for Node/server-side logic. |
+| `@playwright/test` | headless browser regression tests for the Bridge Console and screens. |
+
+To run Playwright e2e tests on a machine that has not installed browser
+binaries yet:
+
+```
+npm run test:e2e:install
+```
 
 ## Quick start
 
-**Recommended — the bundled app server (full features + saved layouts):**
+**Recommended — Vite dev server:**
 
 ```
 cd ship-screens
-./serve.sh            # or: python3 server.py
+npm ci
+npm run dev
 ```
 
 Then open **http://localhost:8000/** in Chrome or Edge — it lands on the
 **Bridge Console** (`app.html`). For the multi-window deck instead, open
 **http://localhost:8000/launcher.html**.
 
+**Static server fallback for the current screens:**
+
+```
+cd ship-screens
+./serve.sh            # or: python3 server.py
+```
+
+The wrapper also serves on port 8000 and supports the launcher preset API. It
+does not bundle npm/ES-module screen code, so use Vite for new module-based
+work and production builds.
+
 ## Platform
 
 - **Desktop OS**: macOS, Windows, and Linux (modern desktop browsers).
 - **Browsers**: Chrome and Edge are the primary targets; Safari is supported
   (including fullscreen behavior).
-- **Runtime modes**:
-  - `file://` works for standalone visuals/sonification with synth fallback.
-  - `http://localhost` (via `serve.sh` / `server.py`) is required for live mic
-    input and launcher saved layouts.
-
-**Direct / no server:** you can also just double-click `launcher.html`.
-Everything works except live microphone input and saved layouts — browsers
-block `getUserMedia` on the `file://` origin for security reasons, and the
-layout API needs the server. Every screen falls back automatically to a
-procedurally generated "deep space signal" synth bed, so the 3D animation,
-spectrograph, and sonification are all still fully live — it's just not
-reacting to real-world sound.
+- **Runtime:** serve through `npm run dev`, `npm run preview`, `./serve.sh`, or
+  another localhost/static host. `file://` double-click support is no longer a
+  target.
+- **Secure context:** live microphone input requires `http://localhost` or
+  another secure context. If mic access is denied or unavailable, every screen
+  falls back to the procedural synth bed.
 
 ## Server
 
+The primary development server is Vite:
+
+```
+npm run dev        # http://localhost:8000
+npm run build      # static production build in dist/
+npm run preview    # preview the built dist/
+```
+
 [`server.py`](server.py) is a **zero-dependency Python 3 standard-library**
-server (no `pip install`, matching the project's no-build ethos). It serves
-the static screens *and* adds a small JSON API the files can't provide alone.
+server. It serves the current static screens and adds a small JSON API the
+files can't provide alone.
 
 **Launch:**
 
@@ -123,14 +193,15 @@ PORT=9000 python3 server.py
 Stop with `Ctrl+C`. It serves on `http://localhost:8000/launcher.html` by
 default.
 
-**Why bother, when screens open straight from disk?**
+**Why serve locally?**
 
 - **Live microphone** requires a "secure context" — `http://localhost` counts,
   `file://` does not. Serving unlocks real mic-reactive audio.
 - **Saved launcher layouts** — assign screens to slots, name the arrangement,
   and reload it later. Stored server-side in `data/presets.json` (gitignored).
-  The launcher's "Saved Layouts" bar only appears when the API is reachable;
-  under `file://` it stays hidden and everything else works unchanged.
+  The launcher's "Saved Layouts" bar only appears when the API is reachable.
+- **Bundled/module screens** — Vite is required for screens that import npm
+  packages or ES modules.
 
 **API endpoints:**
 
@@ -163,6 +234,9 @@ open separate windows.
     live value, and range. Drag a knob vertically to change it; double-click to
     reset it to default. The panel is see-through, so the visual stays the whole
     cell and the controls just mask it.
+  - **Grid spotlight** — click a grid thumbnail to enlarge it over the wall
+    without reloading the iframe; the knob panel scales up with it. Press
+    Escape, click the backdrop, or use the close button to return to Grid.
 - **Engage Console** — one click boots audio in every pane at once (browsers
   require a user gesture to start audio; the console needs only one for all 10).
 - **Center vs. rails** — featured (center) panes render at full frame rate
@@ -193,8 +267,9 @@ open separate windows.
 - **Promote** — click a rail pane's **⤢** to swap it into the primary center
   slot (the previous hero drops back to the rail). No reload — panes never
   re-boot when you rearrange them.
-- Your layout, order, volumes, reactivity, and mute state persist in
-  `localStorage`.
+- Your layout, order, volumes, reactivity, mute state, and per-screen panel
+  settings persist in `localStorage`. Preference migrations keep older saved
+  console states aligned when new module controls are added.
 
 How it works: each screen is loaded in an `<iframe>` with `?embed=1`, which
 activates [`shared/embed.js`](shared/embed.js) — it hides the screen's own boot
@@ -236,12 +311,14 @@ aggressive alert console. In the Bridge Console these appear two ways:
 Both surfaces are driven by the same reusable knob/panel code and the screen's
 `window.__shipPanelConfig(cfg)` hook (relayed by `embed.js`). Parameters are
 per-screen — Reactor exposes breach threshold and klaxon rate/pitch; Nav Core
-exposes route speed, oscillator pitch, PWM depth and a compressor; and so on.
+exposes route speed, oscillator pitch, PWM depth and a compressor; Life Support
+adds tunable air-vent hiss controls; Cryo Bay adds a `User Data` selector for
+pod mini-waveforms (`ECG`, `STAB`, `TEMP`, `AUDIO`).
 
 ## Using the launcher
 
 - Each of the 10 slots has a dropdown of available screens and an **Open** /
-  **Close** button. Screens marked "pending" haven't been built yet.
+  **Close** button. All 10 roadmap screens are online.
 - **Open** spawns that screen in its own window (not a tab) so you can
   drag/resize/tile it independently — position several across one or more
   monitors to build a full console.
@@ -249,10 +326,10 @@ exposes route speed, oscillator pitch, PWM depth and a compressor; and so on.
   rather than duplicating it.
 - **Open All Assigned** launches every slot currently pointed at a built
   screen in one go.
-- **Saved Layouts** appears when running through `server.py` / `serve.sh`:
+- **Saved Layouts** appears when running through Vite or `server.py` /
+  `serve.sh`:
   save the current slot assignment by name, then reload it later from the
-  preset list (`/api/presets`). When opened via `file://`, this bar is hidden
-  and launcher behavior otherwise stays the same.
+  preset list (`/api/presets`).
 
 ## Status
 
@@ -263,8 +340,8 @@ exposes route speed, oscillator pitch, PWM depth and a compressor; and so on.
 | 3 | Reactor | Engineering telemetry: bass-driven containment torus, thermal spectrograph, industrial klaxons | ✅ built |
 | 4 | Threat Matrix | Tactical targeting: rotating 3D sweep, deterministic ping on sweep-crossing, hostile drones | ✅ built |
 | 5 | Anomaly | Xenoscience: transient-detection RGB-split glitch, ephemeral spatial contacts, jittering chrome | ✅ built |
-| 6 | Life Support | Atmospherics: breathing deck ring on a respiration rhythm, position-encoded zone alarms | ✅ built |
-| 7 | Cryo Bay | Medical stasis: pod tiles sonified from simulated vitals, positional heartbeat beeps | ✅ built |
+| 6 | Life Support | Atmospherics: breathing deck ring, zone alarms, tunable air-vent hiss | ✅ built |
+| 7 | Cryo Bay | Medical stasis: pod tiles, selectable user-data waveforms, positional heartbeat beeps | ✅ built |
 | 8 | Subspace | Warp harmonics: standing-wave field-line tunnel, harmonic-series tones, Lissajous XY scope | ✅ built |
 | 9 | AI Core | Neural substrate: node-graph cascades, radial spectrograph, position-hashed thought blips | ✅ built |
 | 10 | Hull Cameras | External optical: one debris scene in a 2×2 viewport grid, proximity alerts | ✅ built |
@@ -281,9 +358,11 @@ ship-screens/
   app.html                 Bridge Console — single-window data wall (default)
   launcher.html            multi-window control deck — assigns & spawns windows
   server.py / serve.sh     zero-dependency Python app server (+ presets API)
-  CLAUDE.md / AGENTS.md     agent/contributor guide — conventions & hard
-                            constraints (AGENTS.md is the same brief, for
-                            agent tooling that looks for that filename)
+  package.json             Vite/Vitest/Playwright scripts
+  vite.config.js           multi-page Vite build + presets API plugin
+  playwright.config.js     headless browser regression tests
+  CLAUDE.md / AGENTS.md     agent/contributor guides — conventions, current
+                            implementation notes, and hard constraints
   ROADMAP.md               per-screen design brief for all 10 screens
   shared/
     audio-engine.js        shared Web Audio backbone: mic / media-file / synth
@@ -294,13 +373,17 @@ ship-screens/
   screens/
     screen-01-comms-array.html
     ... through screen-10-hull-cameras.html
+  tests/
+    unit/                   Vitest specs for server-side logic
+    e2e/                    Playwright specs for console/browser behavior
 ```
 
-`shared/audio-engine.js` is loaded as a plain script (not an ES module) so
-everything keeps working when opened straight from disk. Each screen is
-otherwise fully self-contained: its own HTML/CSS/3D scene/canvas drawing code,
-built around a **distinct visual identity** rather than a shared template —
-by design, no two screens should look like reskins of each other.
+`shared/audio-engine.js` and `shared/embed.js` are still plain scripts for the
+current screens, while Vite supplies the server/build layer and allows future
+screens to import npm packages. Each screen is otherwise fully self-contained:
+its own HTML/CSS/3D scene/canvas drawing code, built around a **distinct visual
+identity** rather than a shared template — by design, no two screens should look
+like reskins of each other.
 
 ## Screen 1: Comms Array
 

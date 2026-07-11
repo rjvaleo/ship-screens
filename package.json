@@ -1,0 +1,25 @@
+{
+  "name": "ship-screens",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sci-fi ship data-screen simulator — a wall of self-contained HTML visualizer/sonification screens.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install --with-deps chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "happy-dom": "^15.11.0",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.8"
+  },
+  "dependencies": {
+    "three": "^0.185.1"
+  }
+}

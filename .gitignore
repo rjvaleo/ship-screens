@@ -9,3 +9,14 @@
 # Server runtime data (saved launcher layouts)
 data/
 __pycache__/
+
+# Node / Vite / test tooling
+node_modules/
+dist/
+.vite/
+coverage/
+test-results/
+playwright-report/
+.env
+.env.*
+!.env.example

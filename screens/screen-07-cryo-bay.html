@@ -111,7 +111,7 @@
   'use strict';
   const engine = new ShipAudioEngine({ fftSize: 2048, smoothing: 0.8 });
   let spatialEnabled=true, standardEnabled=true;
-  const soundCfg = { heartPitch:1400, heartGain:1, heartDuration:0.09, bpmScale:1, spatialPulseGain:1 };
+  const soundCfg = { heartPitch:1400, heartGain:1, heartDuration:0.09, bpmScale:1, spatialPulseGain:1, dataWaveform:3 };
   function clamp(v,min,max){ return Math.max(min, Math.min(max, Number(v))); }
   window.__shipPanelConfig = function(cfg){
     if(!cfg) return;
@@ -120,6 +120,7 @@
     if(cfg.heartDuration != null) soundCfg.heartDuration = clamp(cfg.heartDuration, 0.03, 0.35);
     if(cfg.bpmScale != null) soundCfg.bpmScale = clamp(cfg.bpmScale, 0.4, 2);
     if(cfg.spatialPulseGain != null) soundCfg.spatialPulseGain = clamp(cfg.spatialPulseGain, 0, 1.5);
+    if(cfg.dataWaveform != null) soundCfg.dataWaveform = Math.round(clamp(cfg.dataWaveform, 0, 3));
   };
   document.getElementById('toggle-spatial').addEventListener('click', function(){ spatialEnabled=!spatialEnabled; this.classList.toggle('on',spatialEnabled); });
   document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
@@ -144,7 +145,9 @@
       bpm: 5 + Math.random()*6,          // slowed cryo heart rate
       stability: 0.75+Math.random()*0.2, // 0..1 internal stability
       temp: -140 - Math.random()*30,
-      beatPhase: Math.random(), lastBeat:0, ecg:new Float32Array(160), ecgHead:0,
+      beatPhase: Math.random(), lastBeat:0,
+      ecg:new Float32Array(160), stabilityTrace:new Float32Array(160),
+      tempTrace:new Float32Array(160), audioTrace:new Float32Array(160), dataHead:0,
       binLo:Math.floor(20+i*80), binHi:Math.floor(20+(i+1)*80)
     };
     const card=document.createElement('div'); card.className='pod'+(i===0?' selected':'');
@@ -209,10 +212,44 @@
   let running=false;
   function startAll(){ resizeSoon(); running=true; requestAnimationFrame(loop); }
 
-  function drawEcg(p){
+  function drawAudioScope(p, timeData, level){
     const c=p.ecgCanvas, x=p.ecgCtx, w=c.width, h=c.height; if(!w||!h) return;
-    x.clearRect(0,0,w,h); x.strokeStyle='#D6455B'; x.lineWidth=1.2; x.beginPath();
-    for(let i=0;i<p.ecg.length;i++){ const idx=(p.ecgHead+i)%p.ecg.length; const xx=i/(p.ecg.length-1)*w; const yy=h/2 - p.ecg[idx]*h*0.42; if(i===0)x.moveTo(xx,yy); else x.lineTo(xx,yy); }
+    x.fillStyle='rgba(5,8,7,0.55)';
+    x.fillRect(0,0,w,h);
+    x.strokeStyle='#5FD3C4';
+    x.lineWidth=1.5;
+    x.beginPath();
+    const n=timeData.length;
+    for(let i=0;i<n;i++){
+      const xx=(i/n)*w;
+      const yy=h/2 + ((timeData[i]-128)/128) * (h*0.42);
+      if(i===0)x.moveTo(xx,yy); else x.lineTo(xx,yy);
+    }
+    x.stroke();
+    x.fillStyle='#E8A33D';
+    x.fillRect(0,h-4,Math.max(0,Math.min(1,level*3.2))*w,4);
+  }
+
+  function drawUserData(p, timeData, level){
+    if(soundCfg.dataWaveform===3){
+      drawAudioScope(p, timeData, level);
+      return;
+    }
+    const c=p.ecgCanvas, x=p.ecgCtx, w=c.width, h=c.height; if(!w||!h) return;
+    const traces=[p.ecg,p.stabilityTrace,p.tempTrace];
+    const colors=['#D6455B','#4FA3C7','#9FD2DD'];
+    const amps=[0.42,0.76,0.62];
+    const trace=traces[soundCfg.dataWaveform] || p.ecg;
+    x.clearRect(0,0,w,h);
+    x.strokeStyle=colors[soundCfg.dataWaveform] || colors[0];
+    x.lineWidth=1.2;
+    x.beginPath();
+    for(let i=0;i<trace.length;i++){
+      const idx=(p.dataHead+i)%trace.length;
+      const xx=i/(trace.length-1)*w;
+      const yy=h/2 - trace[idx]*h*(amps[soundCfg.dataWaveform] || amps[0]);
+      if(i===0)x.moveTo(xx,yy); else x.lineTo(xx,yy);
+    }
     x.stroke();
   }
   function drawSpec(p, freq){
@@ -234,6 +271,7 @@
     if(!running) return; requestAnimationFrame(loop);
     const time=t*0.001;
     const freq=engine.getFrequencyData();
+    const timeData=engine.getTimeDomainData();
     const level=engine.getLevel();
 
     pods.forEach((p,i)=>{
@@ -253,9 +291,13 @@
         if(spatialEnabled){ const v=engine.createSpatialVoice({ freq:soundCfg.heartPitch, type:'sine' }); v.setPosition(Math.cos(p.ang)*3, 0, Math.sin(p.ang)*3); v.setGain(gain*soundCfg.spatialPulseGain); setTimeout(()=>v.stop(0.05), soundCfg.heartDuration*1000); }
       }
       p._lastPhase=phase;
-      // push ecg sample
-      p.ecg[p.ecgHead]=ecgSample(phase, p.stability); p.ecgHead=(p.ecgHead+1)%p.ecg.length;
-      drawEcg(p); drawSpec(p, freq);
+      // Push the selectable user-data waveform samples into parallel traces.
+      p.ecg[p.dataHead]=ecgSample(phase, p.stability);
+      p.stabilityTrace[p.dataHead]=(p.stability-0.68)/0.32;
+      p.tempTrace[p.dataHead]=Math.sin(time*0.22+i)*0.12 + ((p.temp+155)/28);
+      p.audioTrace[p.dataHead]=(p.audioAmp*2)-0.3;
+      p.dataHead=(p.dataHead+1)%p.ecg.length;
+      drawUserData(p, timeData, level); drawSpec(p, freq);
       const warn=p.stability<0.55;
       p.stateEl.textContent=warn?'UNSTABLE':'STASIS'; p.stateEl.classList.toggle('warn',warn);
       p.stabEl.textContent=(p.stability*100).toFixed(0);

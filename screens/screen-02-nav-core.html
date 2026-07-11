@@ -417,19 +417,24 @@
   const wpListEl = document.getElementById('wp-list');
 
   // ---------- Main loop ----------
-  let running=false, journey=0;
-  function startAll(){ resize(); running=true; requestAnimationFrame(loop); }
+  let running=false, journey=0, lastFrameT=0;
+  function startAll(){ resize(); running=true; lastFrameT=0; requestAnimationFrame(loop); }
 
   const _tmp = new THREE.Vector3();
   function loop(t){
     if(!running) return;
     requestAnimationFrame(loop);
     const time = t*0.001;
+    // Wall-clock delta so the route (and the beacon pitch it drives) runs at a
+    // steady rate no matter the frame rate — on the rails/grid the shell
+    // throttles rAF, but the sonification must do its thing regardless.
+    const dt = lastFrameT ? Math.min(0.1, (t - lastFrameT) * 0.001) : 1/60;
+    lastFrameT = t;
     const freq = engine.getFrequencyData();
     const level = engine.getLevel();
 
-    // camera drifts forward along the route, looping
-    journey = (journey + 0.00035 * navSound.routeSpeed) % 1;
+    // camera drifts forward along the route, looping (0.021/s ≈ old 60fps rate)
+    journey = (journey + 0.021 * navSound.routeSpeed * dt) % 1;
     const camU = journey;
     const camPos = curve.getPointAt(camU);
     const aheadU = (camU + 0.02) % 1;

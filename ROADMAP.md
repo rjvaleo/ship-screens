@@ -1,11 +1,12 @@
 # Roadmap — Screens 2–10
 
-Each entry below is a complete design brief in the same format the frontend-design
-process expects: **palette / type / layout / signature**, plus a **3D** note and
-an **audio mapping** note (how spectrograph/oscilloscope + spatial/standard
-sonification specifically work for that screen — not just "reuse screen 1's
-pattern"). Build one at a time, in order, and follow the QA checklist in
-CLAUDE.md before flipping each to `online` in `launcher.html`.
+Each entry below began as a complete design brief in the same format the
+frontend-design process expects: **palette / type / layout / signature**, plus a
+**3D** note and an **audio mapping** note (how spectrograph/oscilloscope +
+spatial/standard sonification specifically work for that screen — not just
+"reuse screen 1's pattern"). All 10 screens are now built and online; keep this
+roadmap as the canonical design record and add implementation notes when a
+screen gains meaningful new controls or behavior.
 
 Fonts are pre-assigned per screen so the 10-screen set doesn't converge on the
 same 2–3 families. All are on Google Fonts.
@@ -202,6 +203,12 @@ Spectrograph rendered as a **soft flowing gradient fill** (area chart style,
 smoothed) rather than screen 1's hard-edged waterfall lines — same
 underlying FFT data, calmer presentation, matching the mood.
 
+**Implementation note**: Life Support now includes a tunable air-vent hiss
+layer in addition to zone alarms. The Bridge Console exposes `Air Gain`,
+`Air Gap`, `Air Tone`, `Air Res`, and `Air Length` as CTL/knob controls, with
+preference migration coverage so old saved console settings do not pin stale
+values.
+
 ---
 
 ## 7. Cryo Bay — *Medical / cryo-stasis monitoring*
@@ -239,6 +246,11 @@ pod's beep is positioned at that pod's location in the bay, so multiple pods
 beeping creates a layered, spatially distributed rhythm — an ensemble effect
 none of the other screens produce. The waterfall/spectrograph panel can be
 reframed as a compact strip per pod card rather than one large panel.
+
+**Implementation note**: Cryo Bay now exposes a Bridge Console `User Data`
+control for each pod's mini-waveform display: `ECG`, `STAB`, `TEMP`, or
+`AUDIO`. The default `AUDIO` mode uses the same time-domain oscilloscope
+language as Comms Array, with a cyan waveform and amber level meter.
 
 ---
 
@@ -355,7 +367,8 @@ feeds, rather than a dedicated per-screen panel.
 
 ## Build order recap
 
-Build and QA one at a time, in the order above (2 → 10), same as screen 1.
-After each screen passes the CLAUDE.md checklist, flip it to `online` in
-`launcher.html` and update the status table in `README.md` before starting
-the next.
+The original build order was 2 → 10, same as screen 1. That sequence is now
+complete. Future screen or console work should still follow the CLAUDE.md /
+AGENTS.md QA checklist: verify standalone + embedded behavior, media-file
+reactivity, synth fallback, Grid spotlight/minimal mode, and any panel-control
+preference migrations before marking the work done.

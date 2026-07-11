@@ -11,35 +11,54 @@ spectrograph/waterfall, an oscilloscope, and both **3D spatial** and
 spawns any screen into any of 10 independent OS-level windows for tiling
 across a desktop.
 
-Full concept roadmap for the remaining screens: see **ROADMAP.md**.
-Design/engineering decisions already made for screen 1: see **README.md**.
+Full concept roadmap for the screen set: see **ROADMAP.md**. All 10 roadmap
+screens are currently built and registered. Design/engineering decisions and
+current usage notes live in **README.md**.
+
+## Current implementation highlights
+
+- `app.html` is the primary experience: a single-window Bridge Console with
+  Solo / Duo / Trio / Grid layouts, rail promotion, Grid spotlight focus,
+  per-pane volume/reactivity, CTL panels, fullscreen, master mute, and a top-bar
+  media deck.
+- A loaded audio/video file is broadcast to every pane for analysis. Only the
+  primary pane emits the file's audible pass-through to avoid ten stacked copies.
+- The procedural synth fallback is still owned by each screen's
+  `ShipAudioEngine`. Do not replace it with a shared generated-source handoff
+  without proving audible output and visual reactivity across all panes; an
+  earlier deterministic shared-buffer attempt made the wall feel silent.
+- Console settings persist in `localStorage`, including per-screen panel
+  controls. When adding or changing panel defaults, bump the prefs migration in
+  `app.html` so stale saved Bridge Console settings do not mask the new defaults.
+- Recent module-specific controls include Life Support's air-vent hiss tuning
+  and Cryo Bay's `User Data` selector (`ECG`, `STAB`, `TEMP`, `AUDIO`).
 
 ## Hard constraints — do not violate these
 
-1. **Every screen is a single self-contained `.html` file** under `screens/`,
-   with all CSS and screen-specific JS inline. Only three things are ever
-   shared: `shared/audio-engine.js`, `shared/embed.js` (the console hook —
-   see "Bridge Console" below), and the Google Fonts CDN calls. Do not
-   factor screens into multiple files or add a build step (no bundler, no
-   npm install) — the whole point is these run by opening an HTML file.
-2. **`shared/audio-engine.js` stays a plain (non-module) script.** It's
-   loaded via `<script src="../shared/audio-engine.js"></script>`, not
-   `type="module"`. This is deliberate: ES module imports are blocked by CORS
-   when a screen is opened directly via `file://`, and we want double-clicking
-   the file to still work. Don't convert it to a module, and don't add other
-   shared modules that would require one.
-3. **Three.js**: loaded from `https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js`
-   as a global `THREE`, same reason as above (r128 is the last version with a
-   working non-module UMD build simple enough for `file://`). Stay on r128
-   APIs: notably, **`THREE.CapsuleGeometry` does not exist in r128** — use
-   `THREE.CylinderGeometry` + sphere caps, or `THREE.LatheGeometry`, if a
-   screen needs a capsule/pod shape (Cryo Bay does).
-4. **Never reuse another screen's visual identity.** Each screen needs its
+Screens run through the **Vite dev server / build only** — `file://`
+double-click support has been dropped, which is what frees up ES modules, npm
+packages, and a current Three.js (see the history in "Tooling & tests").
+
+1. **Each screen is its own page** under `screens/` — one screen per HTML entry.
+   **Do not merge screens into a single-page app**, add a client-side router, or
+   split one screen's UI across multiple pages. Beyond that you're free: screen
+   CSS/JS can be inline or imported as ES modules (`type="module"` / `import`),
+   and screens may pull in npm packages — Vite builds each page as its own entry
+   and bundles it. Shared browser helpers live in `shared/`
+   (`audio-engine.js`, `embed.js`, the console hook — see "Bridge Console" —
+   and the optional `analytics.js`); they may be plain scripts or ES modules.
+2. **Three.js comes from the npm `three` package** (`import * as THREE from
+   'three'`, currently ^0.185) — use current APIs. The old r128 CDN pin and its
+   limitations (e.g. no `THREE.CapsuleGeometry`) **no longer apply to new
+   screens**. Note: the 10 existing screens still load r128 as a global `THREE`
+   from cdnjs and haven't been migrated — match a screen's existing approach
+   when editing it, and prefer the npm import for anything new.
+3. **Never reuse another screen's visual identity.** Each screen needs its
    own palette, type pairing, layout concept, and one signature visual/audio
    idea — see the frontend-design approach below. If a new screen's plan
    reads like a reskin of an existing one (same font pairing, same waterfall
    style, same node-constellation layout), revise it before building.
-5. Every new screen must work with **no microphone at all** — always fall
+4. Every new screen must work with **no microphone at all** — always fall
    back gracefully through `ShipAudioEngine`'s built-in synthetic signal bed
    (this is automatic, just don't bypass the engine and hit `getUserMedia`
    directly).
@@ -214,33 +233,74 @@ media/reactivity/mute/sonic-profile controls above.
 
 ## Local dev
 
+Preferred (modern toolchain — needs Node 20.11+):
+
 ```
 cd ship-screens
-python3 -m http.server 8000
+npm install
+npm run dev        # Vite dev server on http://localhost:8000 (+ /api/presets)
 ```
-Open `http://localhost:8000/launcher.html`. Use a local server (not
-double-clicking the file) whenever you need to test live microphone input —
-`getUserMedia` requires a secure context, which `file://` isn't.
+
+`vite.config.js` treats every top-level page and every `screens/*.html` as its
+own entry (a multi-page build, not an SPA). The `presetsApiPlugin` in
+`server/presets.js` reproduces the old Python server's `/api/health` and
+`/api/presets` endpoints, so the launcher's Saved Layouts work under Vite too.
+`npm run build` emits static files to `dist/`; `npm run preview` serves them.
+
+`file://` double-click is **no longer supported** — screens are served by Vite
+(or the built `dist/`). `python3 server.py` still works as a zero-Node static
+server for the *current* screens, but it does no bundling, so any screen that
+uses ES-module / npm imports needs Vite. Live mic input needs a served origin
+either way (`getUserMedia` requires a secure context).
+
+## Tooling & tests
+
+The project has a Vite build/dev/test layer. Screens run through it (or the
+built `dist/`); there is no longer a `file://` path to preserve.
+
+**History:** this repo was originally "no build, open the HTML file." That
+`file://` goal is what forced non-module scripts and the Three.js r128 pin.
+Once a Vite dev/build was added and `file://` support was dropped, those two
+constraints were removed — hence ES modules, npm packages, and `three@latest`.
+
+- **Vite** — dev server (`npm run dev`), multi-page build (`npm run build`),
+  static preview (`npm run preview`). Config: `vite.config.js`.
+- **Vitest** — unit tests for Node-side logic (`npm test`), `happy-dom`
+  environment, specs in `tests/unit/**/*.test.js`. Example:
+  `tests/unit/presets.test.js` covers the saved-layout store.
+- **Playwright** — headless end-to-end/browser behavior in `tests/e2e/**`
+  (`npm run test:e2e`, after `npm run test:e2e:install`). Example:
+  `tests/e2e/spotlight.spec.js` drives the Bridge Console grid spotlight.
+- **Working style**: verify changes by **writing tests and reading their logs**,
+  not by manually driving a browser. For live UI confirmation, hand off a
+  `http://localhost:8000/...` link and let a human check it.
+- **Google Analytics (optional)** — `shared/analytics.js` is a plain script
+  that no-ops until a GA4 id is present. Enable via `VITE_GA_ID` in `.env`
+  (see `.env.example`) plus `<meta name="ship-ga-id" content="%VITE_GA_ID%">`
+  in a page's `<head>`, or `window.SHIP_GA_ID` at runtime. Log events with
+  `window.shipTrack('event', {…})`. It is not wired into any screen yet.
 
 ## Platform
 
 - **Desktop OS**: macOS, Windows, and Linux (modern desktop browsers).
 - **Browsers**: Chrome and Edge are the primary targets; Safari is supported
    (including fullscreen behavior).
-- **Runtime modes**:
-   - `file://` works for standalone visuals/sonification with synth fallback.
-   - `http://localhost` is required for live mic input and launcher saved
-      layouts.
+- **Runtime**: served via `npm run dev` (Vite) or the built `dist/` (any static
+   host). `http://localhost` (a secure context) is required for live mic input
+   and launcher saved layouts. `file://` double-click is not supported.
 
 ## QA checklist before marking a screen "online"
 
-- [ ] Opens with no console errors both via `file://` and via local server
+- [ ] Opens with no console errors via `npm run dev` and `npm run preview`
 - [ ] Works with mic permission denied (falls back to synth cleanly)
 - [ ] Reacts to a loaded media file via the File Deck (drop in an audio file)
+- [ ] Works embedded in `app.html`, including Grid thumbnail/minimal mode,
+      Grid spotlight, and rail promotion without iframe reloads
 - [ ] Resizes correctly (all canvases/renderers respond to `window.resize`),
       including when promoted to full-frame in the console's Grid (minimal) mode
 - [ ] Spatial and standard sonification toggles both function independently
+- [ ] Any new panel-control defaults have a Bridge Console `localStorage`
+      migration or tests that prove stale saved prefs do not hide them
 - [ ] Distinct palette/type/layout/signature from every other built screen
-- [ ] No use of `THREE.CapsuleGeometry` or other post-r128 APIs
 - [ ] Registered in `launcher.html` and `app.html` (`MODULES`); status table
       updated in `README.md`
