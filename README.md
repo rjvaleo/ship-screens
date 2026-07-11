@@ -8,7 +8,9 @@
 
 ![Build](https://img.shields.io/badge/build-none%20(open%20the%20file)-success)
 ![Dependencies](https://img.shields.io/badge/npm%20dependencies-0-brightgreen)
-![Runtime](https://img.shields.io/badge/runs%20on-file%3A%2F%2F%20or%20localhost-blue)
+![Runtime](https://img.shields.io/badge/runtime-file%3A%2F%2F%20%2B%20localhost-blue)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-4A7B9D)
+![Browsers](https://img.shields.io/badge/browsers-Chrome%20%7C%20Edge%20%7C%20Safari-2D9C6A)
 ![Screens](https://img.shields.io/badge/screens-10%20%2F%2010%20online-brightgreen)
 ![Status](https://img.shields.io/badge/status-complete-brightgreen)
 
@@ -37,7 +39,8 @@ Two ways to run them:
   panel for live sound tuning; click a rail pane's ⤢ to promote it to center.
   Load an audio/video file in the top bar and every pane reacts to it, or hit
   **MUTE** to silence the whole wall while the visuals keep running. One "Engage
-  Console" gesture boots audio in every pane at once.
+  Console" gesture boots audio in every pane at once. Use **FULLSCREEN** to
+  switch the wall into true browser fullscreen (hides browser chrome).
 - **`launcher.html` — the multi-window deck**: assign any screen to any of 10
   slots and pop each out as its own OS-level window to tile across a desktop.
 
@@ -83,6 +86,16 @@ cd ship-screens
 Then open **http://localhost:8000/** in Chrome or Edge — it lands on the
 **Bridge Console** (`app.html`). For the multi-window deck instead, open
 **http://localhost:8000/launcher.html**.
+
+## Platform
+
+- **Desktop OS**: macOS, Windows, and Linux (modern desktop browsers).
+- **Browsers**: Chrome and Edge are the primary targets; Safari is supported
+  (including fullscreen behavior).
+- **Runtime modes**:
+  - `file://` works for standalone visuals/sonification with synth fallback.
+  - `http://localhost` (via `serve.sh` / `server.py`) is required for live mic
+    input and launcher saved layouts.
 
 **Direct / no server:** you can also just double-click `launcher.html`.
 Everything works except live microphone input and saved layouts — browsers
@@ -168,9 +181,14 @@ open separate windows.
   reacts to *it* instead of the mic/synth. Play/restart, seek, loop, mute the
   file's own audio ("File Audio"), and apply a pass-through effect (Clean,
   Filter, Delay, Reverb, Chorus, Flange, Pitch) with an amount slider.
+  To avoid layered playback from 10 simultaneous engines, the file's own
+  audible output is routed through the current primary pane only; all panes
+  still analyse and react to the same file.
 - **MUTE** (top bar) — a master mute that silences every pane at once (the
   button turns red "MUTED"). It cuts sound at each engine's final output stage,
   so the **visualizers keep running** — the wall stays alive, just silent.
+- **FULLSCREEN** (top bar) — toggles true browser fullscreen for the entire
+  wall (document-level fullscreen with Safari fallbacks).
 - **Rail width** — L/R sliders in the top bar resize the side rails (8%–28%).
 - **Promote** — click a rail pane's **⤢** to swap it into the primary center
   slot (the previous hero drops back to the rail). No reload — panes never
@@ -231,6 +249,10 @@ exposes route speed, oscillator pitch, PWM depth and a compressor; and so on.
   rather than duplicating it.
 - **Open All Assigned** launches every slot currently pointed at a built
   screen in one go.
+- **Saved Layouts** appears when running through `server.py` / `serve.sh`:
+  save the current slot assignment by name, then reload it later from the
+  preset list (`/api/presets`). When opened via `file://`, this bar is hidden
+  and launcher behavior otherwise stays the same.
 
 ## Status
 

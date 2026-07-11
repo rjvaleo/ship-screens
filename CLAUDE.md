@@ -85,8 +85,11 @@ with `?embed=1`) into one window, in Solo / Duo / Trio / Grid layouts (Grid is
 a 4×3 wall of full-bleed visualizer thumbnails via the hook's `minimal` mode,
 each with an overlaid knob panel + hover-info box). It also has a top-bar media
 deck (load an audio/video file to drive every pane), a master **MUTE** button,
-and per-pane VOL / RX (reactivity) / CTL controls. A new screen works there for
-free **as long as it follows these conventions**:
+and per-pane VOL / RX (reactivity) / CTL controls, plus a **FULLSCREEN** button
+for true browser fullscreen mode. The media file's own audible output is routed
+through the primary pane only (to avoid stacked playback), while all panes still
+analyse and react to the same file. A new screen works there for free **as long
+as it follows these conventions**:
 
 - Load the hook right after the audio engine:
   `<script src="../shared/embed.js"></script>` (after
