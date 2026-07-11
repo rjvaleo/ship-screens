@@ -116,7 +116,7 @@
   <div class="toggle-row"><label>Beacon Bearing</label><div class="switch on" id="toggle-spatial"><div class="knob"></div></div></div>
   <div class="toggle-row"><label>Arrival Chime</label><div class="switch on" id="toggle-standard"><div class="knob"></div></div></div>
   <div class="sound-control"><span>Route</span><input data-sound="routeSpeed" type="range" min="0.25" max="3" step="0.05" value="1"><output>1.00x</output></div>
-  <div class="sound-control"><span>Pitch</span><input data-sound="oscPitch" type="range" min="28" max="420" step="1" value="92"><output>92Hz</output></div>
+  <div class="sound-control"><span>Pitch</span><input data-sound="oscPitch" type="range" min="14" max="110" step="1" value="36"><output>36Hz</output></div>
   <div class="sound-control"><span>Cutoff</span><input data-sound="cutoff" type="range" min="180" max="12000" step="10" value="2600"><output>2600Hz</output></div>
   <div class="sound-control"><span>PWM Rate</span><input data-sound="pwmRate" type="range" min="0.02" max="1.2" step="0.01" value="0.12"><output>0.12Hz</output></div>
   <div class="sound-control"><span>PWM Depth</span><input data-sound="pwmDepth" type="range" min="0" max="0.46" step="0.01" value="0.28"><output>28%</output></div>
@@ -143,7 +143,7 @@
   document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
   const navSound = {
     routeSpeed: 1,
-    oscPitch: 92,
+    oscPitch: 36,
     cutoff: 2600,
     pwmRate: 0.12,
     pwmDepth: 0.28,
@@ -176,7 +176,7 @@
   function setNavSoundConfig(cfg){
     if(!cfg) return;
     if(cfg.routeSpeed != null) navSound.routeSpeed = clamp(cfg.routeSpeed, 0.25, 3);
-    if(cfg.oscPitch != null) navSound.oscPitch = clamp(cfg.oscPitch, 28, 420);
+    if(cfg.oscPitch != null) navSound.oscPitch = clamp(cfg.oscPitch, 14, 110);
     if(cfg.cutoff != null) navSound.cutoff = clamp(cfg.cutoff, 180, 12000);
     if(cfg.pwmRate != null) navSound.pwmRate = clamp(cfg.pwmRate, 0.02, 1.2);
     if(cfg.pwmDepth != null) navSound.pwmDepth = clamp(cfg.pwmDepth, 0, 0.46);
@@ -366,22 +366,27 @@
   const starMat = new THREE.PointsMaterial({ color:0xCFE8FF, size:0.5, sizeAttenuation:true, transparent:true, opacity:0.9 });
   scene.add(new THREE.Points(starGeo, starMat));
 
-  // Route curve through the field
+  // Route curve through the field — a closed loop so the course never ends:
+  // a forward sweep through the field, then a wide arc back around to the start.
   const ctrlPts = [
     new THREE.Vector3(-40, -6, 60),
     new THREE.Vector3(-14, 8, 22),
     new THREE.Vector3(16, -4, -8),
     new THREE.Vector3(30, 10, -46),
     new THREE.Vector3(6, -8, -86),
-    new THREE.Vector3(-26, 4, -120)
+    new THREE.Vector3(-26, 4, -120),
+    // return arc (swings wide to the left) back toward the start
+    new THREE.Vector3(-60, 14, -96),
+    new THREE.Vector3(-72, -8, -14),
+    new THREE.Vector3(-58, 10, 44)
   ];
-  const curve = new THREE.CatmullRomCurve3(ctrlPts, false, 'catmullrom', 0.5);
+  const curve = new THREE.CatmullRomCurve3(ctrlPts, true, 'catmullrom', 0.5);
 
-  const tubeGeo = new THREE.TubeGeometry(curve, 220, 0.5, 10, false);
+  const tubeGeo = new THREE.TubeGeometry(curve, 300, 0.5, 10, true);
   const tubeMat = new THREE.MeshBasicMaterial({ color:0x2E7D9E, transparent:true, opacity:0.35, wireframe:true });
   const tube = new THREE.Mesh(tubeGeo, tubeMat);
   scene.add(tube);
-  const tubeCoreGeo = new THREE.TubeGeometry(curve, 220, 0.12, 8, false);
+  const tubeCoreGeo = new THREE.TubeGeometry(curve, 300, 0.12, 8, true);
   const tubeCoreMat = new THREE.MeshBasicMaterial({ color:0xB25CC9, transparent:true, opacity:0.6 });
   scene.add(new THREE.Mesh(tubeCoreGeo, tubeCoreMat));
 
@@ -398,7 +403,7 @@
     const haloGeo = new THREE.OctahedronGeometry(2.4, 0);
     const halo = new THREE.Mesh(haloGeo, new THREE.MeshBasicMaterial({ color:0xB25CC9, wireframe:true, transparent:true, opacity:0.18 }));
     halo.position.copy(p); scene.add(halo);
-    waypoints.push({ id:DESIGS[i], u, pos:p, mesh, halo, toneOffset:i*34, voice:null, arrived:false });
+    waypoints.push({ id:DESIGS[i], u, pos:p, mesh, halo, toneOffset:i*6, voice:null, arrived:false });
   });
 
   function resize(){
@@ -471,7 +476,7 @@
           // doppler-style: pitch rises as the next waypoint approach tightens
           const closeness = isNext ? Math.max(0, 1-nextGap*6) : 0;
           w.voice.updateConfig(navSound);
-          w.voice.setFrequency(waypointFreq(w) * (1 + closeness*0.22));
+          w.voice.setFrequency(waypointFreq(w) * (1 + closeness*0.1));
           w.voice.setGain(Math.max(0.04, 0.5 - dist*0.006));
         }
       } else if (w.voice){ w.voice.stop(); w.voice=null; }
@@ -479,7 +484,7 @@
       // arrival chime when the camera crosses a waypoint
       if (dist < 5 && !w.arrived){
         w.arrived = true;
-        if (standardEnabled) pingNavPulse(waypointFreq(w)*2.2);
+        if (standardEnabled) pingNavPulse(waypointFreq(w)*1.8);
       } else if (dist > 9){ w.arrived = false; }
 
       html += `<div class="wp"><span class="desig ${isNext?'next':''}">${w.id}</span>`+

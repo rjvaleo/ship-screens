@@ -78,7 +78,7 @@
 <div id="proclog"><h2>PROCESS LOG</h2><div class="plog" id="plog-rows"></div></div>
 
 <div class="float-controls">
-  <div class="toggle-row"><label>Cascade Panning (3D)</label><div class="switch on" id="toggle-spatial"><div class="knob"></div></div></div>
+  <div class="toggle-row"><label>3D Spatial Audio</label><div class="switch on" id="toggle-spatial"><div class="knob"></div></div></div>
   <div class="toggle-row"><label>Thought Blips</label><div class="switch on" id="toggle-standard"><div class="knob"></div></div></div>
 </div>
 
@@ -153,6 +153,17 @@
   scene.add(edges);
   const graph=new THREE.Group(); scene.add(graph); graph.add(nodePoints); graph.add(edges);
 
+  // ---------- 3D core (center ball) ----------
+  const core=new THREE.Group(); scene.add(core);
+  const coreBallMat=new THREE.MeshBasicMaterial({ color:0x4FF0D6, transparent:true, opacity:0.85 });
+  const coreBall=new THREE.Mesh(new THREE.SphereGeometry(0.5,28,28), coreBallMat);
+  const coreGlowMat=new THREE.MeshBasicMaterial({ color:0x4FF0D6, transparent:true, opacity:0.16, blending:THREE.AdditiveBlending, depthWrite:false });
+  const coreGlow=new THREE.Mesh(new THREE.SphereGeometry(0.9,22,22), coreGlowMat);
+  const coreCageMat=new THREE.MeshBasicMaterial({ color:0xFF5EA8, wireframe:true, transparent:true, opacity:0.4 });
+  const coreCage=new THREE.Mesh(new THREE.IcosahedronGeometry(1.2,1), coreCageMat);
+  core.add(coreGlow); core.add(coreBall); core.add(coreCage);
+  let coreFlash=0;
+
   function resize(){ const w=vpEl.clientWidth,h=vpEl.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/Math.max(h,1); camera.updateProjectionMatrix(); radialCanvas.width=w; radialCanvas.height=h; }
   window.addEventListener('resize', resize);
 
@@ -171,9 +182,7 @@
       rCtx.strokeStyle=`rgba(${79+120*v|0},${240-90*v|0},${214-40*v|0},${0.25+v*0.7})`;
       rCtx.lineWidth=1.4; rCtx.beginPath(); rCtx.moveTo(x0,y0); rCtx.lineTo(x1,y1); rCtx.stroke();
     }
-    // core glow
-    const g=rCtx.createRadialGradient(cx,cy,0,cx,cy,inner); g.addColorStop(0,'rgba(79,240,214,0.5)'); g.addColorStop(1,'rgba(79,240,214,0)');
-    rCtx.fillStyle=g; rCtx.beginPath(); rCtx.arc(cx,cy,inner,0,Math.PI*2); rCtx.fill();
+    // (center glow is now the real 3D core sphere, drawn on the GL canvas)
   }
 
   // ---------- process log ----------
@@ -208,7 +217,13 @@
 
   // ---------- loop ----------
   let running=false;
-  function startAll(){ resize(); running=true; pushLog('neural substrate online','think'); requestAnimationFrame(loop); }
+  let coreVoice=null; // persistent 3D "core hum" that orbits the listener
+  function startAll(){
+    resize(); running=true;
+    coreVoice=engine.createSpatialVoice({ freq:72, type:'sine' }); coreVoice.setGain(0);
+    pushLog('neural substrate online','think');
+    requestAnimationFrame(loop);
+  }
 
   function loop(t){
     if(!running) return; requestAnimationFrame(loop);
@@ -218,6 +233,7 @@
     if(detectTransient(freq)){
       const seed=Math.floor(Math.random()*N);
       fireNode(seed, 1, 0, time);
+      coreFlash=1;
       if(Math.random()<0.3) pushLog('cascade @ node '+String(seed).padStart(3,'0'),'think');
     }
 
@@ -234,6 +250,23 @@
     nodeGeo.attributes.color.needsUpdate=true;
 
     graph.rotation.y+=0.0016; graph.rotation.x=Math.sin(time*0.1)*0.15;
+
+    // 3D core: pulse the ball with overall level, flash pink on cascades
+    const level=engine.getLevel();
+    coreFlash*=0.9;
+    const pulse=1 + level*0.45 + coreFlash*0.35;
+    coreBall.scale.setScalar(pulse);
+    coreGlow.scale.setScalar(pulse*1.04 + coreFlash*0.5);
+    coreBallMat.opacity=0.7 + level*0.3;
+    coreGlowMat.opacity=0.12 + level*0.3 + coreFlash*0.35;
+    coreBallMat.color.setRGB(0.31 + coreFlash*0.69, 0.94 - coreFlash*0.5, 0.84 - coreFlash*0.15);
+    coreCage.rotation.y+=0.004; coreCage.rotation.x+=0.0022;
+    coreCageMat.opacity=0.3 + level*0.35;
+    // 3D core hum: orbit a low spatial voice around the listener at the origin
+    if(coreVoice){
+      if(spatialEnabled){ const a=time*0.55; coreVoice.setPosition(Math.cos(a)*1.7, Math.sin(a*0.8)*0.9, Math.sin(a)*1.7); coreVoice.setGain((0.09 + level*0.5)*soundCfg.voiceGain, 0.12); }
+      else coreVoice.setGain(0, 0.15);
+    }
 
     renderer.render(scene,camera);
     drawRadial(freq);

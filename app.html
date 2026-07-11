@@ -39,10 +39,13 @@
     background:transparent; color:var(--dim); border:1px solid var(--edge); padding:6px 10px; cursor:pointer; white-space:nowrap; }
   #bar .media button.active{ color:var(--accent); border-color:var(--accent); }
   #bar .media .media-name{ max-width:150px; color:var(--dim); font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  #bar #master-mute{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:10px; letter-spacing:0.14em; text-transform:uppercase;
+  #bar #master-mute,
+  #bar #fullscreen{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:10px; letter-spacing:0.14em; text-transform:uppercase;
     background:transparent; color:var(--dim); border:1px solid var(--edge); padding:6px 12px; cursor:pointer; white-space:nowrap; flex:none; }
-  #bar #master-mute:hover{ color:var(--ink); border-color:var(--edge-hi); }
+  #bar #master-mute:hover,
+  #bar #fullscreen:hover{ color:var(--ink); border-color:var(--edge-hi); }
   #bar #master-mute.active{ color:#FF6B6B; border-color:#FF6B6B; }
+  #bar #fullscreen.active{ color:var(--accent); border-color:var(--accent); }
   #bar .media .media-time{ width:72px; color:var(--dim); font-size:10px; text-align:right; }
   #bar .spacer{ flex:1; }
   #bar .link{ font-size:10px; letter-spacing:0.1em; color:var(--dim); text-decoration:none; }
@@ -189,6 +192,7 @@
     <span class="media-name" id="media-name">no file</span>
   </div>
   <button id="master-mute" title="Mute all audio (visuals keep running)">MUTE</button>
+  <button id="fullscreen" title="Fullscreen — hides all browser chrome">⛶ FULLSCREEN</button>
   <div class="spacer"></div>
   <a class="link" href="launcher.html">MULTI-WINDOW LAUNCHER →</a>
 </div>
@@ -262,7 +266,7 @@
     ],
     'nav-core': [
       { key:'routeSpeed', label:'Route Speed', min:0.25, max:3, step:0.05, value:1, kind:'x' },
-      { key:'oscPitch', label:'Osc Pitch', min:28, max:420, step:1, value:92, kind:'hz' },
+      { key:'oscPitch', label:'Osc Pitch', min:14, max:110, step:1, value:36, kind:'hz' },
       { key:'cutoff', label:'Lowpass', min:180, max:12000, step:10, value:2600, kind:'hz' },
       { key:'pwmRate', label:'PWM Rate', min:0.02, max:1.2, step:0.01, value:0.12, kind:'hz' },
       { key:'pwmDepth', label:'PWM Depth', min:0, max:0.46, step:0.01, value:0.28, kind:'percent' },
@@ -782,6 +786,31 @@
     masterMuteBtn.textContent = muted ? 'MUTED' : 'MUTE';
   }
   masterMuteBtn.addEventListener('click', () => setMasterMute(!muted));
+
+  // fullscreen — true browser fullscreen (removes all browser chrome). Must run
+  // from a user gesture. Uses vendor-prefixed fallbacks for Safari.
+  const fullscreenBtn = document.getElementById('fullscreen');
+  function fsElement(){ return document.fullscreenElement || document.webkitFullscreenElement || null; }
+  function toggleFullscreen(){
+    try {
+      if(fsElement()){
+        const r = (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        if(r && r.catch) r.catch(()=>{});
+      } else {
+        const el = document.documentElement;
+        const r = (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+        if(r && r.catch) r.catch(()=>{});
+      }
+    } catch(e){}
+  }
+  function updateFullscreenControl(){
+    const on = !!fsElement();
+    fullscreenBtn.classList.toggle('active', on);
+    fullscreenBtn.textContent = on ? '⛶ EXIT FULL' : '⛶ FULLSCREEN';
+  }
+  fullscreenBtn.addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', updateFullscreenControl);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenControl);
 
   // preset buttons
   const presetsEl = document.getElementById('presets');
