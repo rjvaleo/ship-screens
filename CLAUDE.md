@@ -222,6 +222,16 @@ Open `http://localhost:8000/launcher.html`. Use a local server (not
 double-clicking the file) whenever you need to test live microphone input —
 `getUserMedia` requires a secure context, which `file://` isn't.
 
+## Platform
+
+- **Desktop OS**: macOS, Windows, and Linux (modern desktop browsers).
+- **Browsers**: Chrome and Edge are the primary targets; Safari is supported
+   (including fullscreen behavior).
+- **Runtime modes**:
+   - `file://` works for standalone visuals/sonification with synth fallback.
+   - `http://localhost` is required for live mic input and launcher saved
+      layouts.
+
 ## QA checklist before marking a screen "online"
 
 - [ ] Opens with no console errors both via `file://` and via local server
