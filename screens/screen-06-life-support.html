@@ -87,6 +87,7 @@
 <div class="float-controls">
   <div class="toggle-row"><label>Zone Alarm (3D)</label><div class="switch on" id="toggle-spatial"><div class="knob"></div></div></div>
   <div class="toggle-row"><label>Alarm Chime</label><div class="switch on" id="toggle-standard"><div class="knob"></div></div></div>
+  <div class="toggle-row"><label>Air Vent</label><div class="switch on" id="toggle-air"><div class="knob"></div></div></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -97,7 +98,11 @@
   'use strict';
   const engine = new ShipAudioEngine({ fftSize: 2048, smoothing: 0.85 });
   let spatialEnabled=true, standardEnabled=true;
-  const soundCfg = { alarmThreshold:0.11, zoneVoicePitch:520, zoneVoiceGain:1, chimePitch:660, chimeGap:2.4, chimeGain:1 };
+  let airEnabled=true;
+  const soundCfg = { alarmThreshold:0.11, zoneVoicePitch:520, zoneVoiceGain:1, chimePitch:660, chimeGap:2.4, chimeGain:1,
+    airGain:0.7, airGap:2.6, airCutoff:2400, airQ:0.7, airDuration:1.6 };
+  const activeAir = new Set(); // in-flight puffs, so a file starting can hard-mute them
+  let airMuted = false;
   function clamp(v,min,max){ return Math.max(min, Math.min(max, Number(v))); }
   window.__shipPanelConfig = function(cfg){
     if(!cfg) return;
@@ -107,9 +112,88 @@
     if(cfg.chimePitch != null) soundCfg.chimePitch = clamp(cfg.chimePitch, 220, 1400);
     if(cfg.chimeGap != null) soundCfg.chimeGap = clamp(cfg.chimeGap, 0.4, 5);
     if(cfg.chimeGain != null) soundCfg.chimeGain = clamp(cfg.chimeGain, 0, 1.4);
+    // air-vent hiss
+    if(cfg.airGain != null) soundCfg.airGain = clamp(cfg.airGain, 0, 1.4);
+    if(cfg.airGap != null) soundCfg.airGap = clamp(cfg.airGap, 0.4, 8);
+    if(cfg.airCutoff != null) soundCfg.airCutoff = clamp(cfg.airCutoff, 200, 12000);
+    if(cfg.airQ != null) soundCfg.airQ = clamp(cfg.airQ, 0.2, 12);
+    if(cfg.airDuration != null) soundCfg.airDuration = clamp(cfg.airDuration, 0.3, 4);
   };
   document.getElementById('toggle-spatial').addEventListener('click', function(){ spatialEnabled=!spatialEnabled; this.classList.toggle('on',spatialEnabled); });
   document.getElementById('toggle-standard').addEventListener('click', function(){ standardEnabled=!standardEnabled; this.classList.toggle('on',standardEnabled); });
+  document.getElementById('toggle-air').addEventListener('click', function(){ airEnabled=!airEnabled; this.classList.toggle('on',airEnabled); });
+
+  // Air-vent hiss: a filtered white-noise puff with a quick intake + tail-off,
+  // fired at intervals so the deck sounds like it's cycling atmosphere. Built on
+  // the engine's standard bus so it respects console volume / mute.
+  function emitAir(intensity){
+    if(!engine.ctx || !engine._standardBus) return;
+    const ctx = engine.ctx;
+    const dur = clamp(soundCfg.airDuration, 0.2, 4);
+    const frames = Math.max(1, Math.ceil(ctx.sampleRate * dur));
+    const buf = ctx.createBuffer(1, frames, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    // pink-ish noise (fuller, airier than white) — Paul Kellet approximation,
+    // so it reads as moving air rather than a bright hiss/shaker.
+    let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+    for(let i=0;i<frames;i++){
+      const w=Math.random()*2-1;
+      b0=0.99886*b0+w*0.0555179; b1=0.99332*b1+w*0.0750759; b2=0.96900*b2+w*0.1538520;
+      b3=0.86650*b3+w*0.3104856; b4=0.55000*b4+w*0.5329522; b5=-0.7616*b5-w*0.0168980;
+      data[i]=(b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11;
+      b6=w*0.115926;
+    }
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const filt = ctx.createBiquadFilter(); filt.type='lowpass';
+    filt.Q.value = clamp(soundCfg.airQ, 0.2, 12);
+    const cutoff = clamp(soundCfg.airCutoff, 200, 12000);
+    const g = ctx.createGain();
+    const t = ctx.currentTime;
+    // gentle lowpass sweep — the gust brightens as it swells, then dims
+    filt.frequency.setValueAtTime(cutoff*0.5, t);
+    filt.frequency.linearRampToValueAtTime(cutoff, t + dur*0.42);
+    filt.frequency.linearRampToValueAtTime(cutoff*0.6, t + dur);
+    // smooth raised-cosine swell: slow fade in, short plateau, slow fade out
+    const peak = clamp(0.85 * soundCfg.airGain * intensity, 0.0001, 1.4);
+    const steps=64, curve=new Float32Array(steps), aF=0.42, rF=0.48;
+    for(let i=0;i<steps;i++){
+      const x=i/(steps-1);
+      let env;
+      if(x<aF) env = 0.5 - 0.5*Math.cos(Math.PI*(x/aF));          // fade in
+      else if(x>1-rF) env = 0.5 - 0.5*Math.cos(Math.PI*((1-x)/rF)); // fade out
+      else env = 1;                                                 // brief hold
+      curve[i]=Math.max(0.0001, env*peak);
+    }
+    g.gain.setValueCurveAtTime(curve, t, dur);
+    const killG = ctx.createGain(); // separate stage so a file starting can hard-mute mid-puff
+    src.connect(filt); filt.connect(g); g.connect(killG); killG.connect(engine._standardBus);
+    src.start(t); src.stop(t + dur + 0.05);
+    const puff = { src, killG };
+    activeAir.add(puff);
+    src.onended = function(){ try{ src.disconnect(); filt.disconnect(); g.disconnect(); killG.disconnect(); }catch(e){} activeAir.delete(puff); };
+  }
+
+  function mediaPlaying(){
+    try { const ms=engine.getMediaState && engine.getMediaState(); return !!(ms && ms.playing); } catch(e){ return false; }
+  }
+  // Hard-mute any in-flight puffs (used the moment a media file starts).
+  function silenceAir(){
+    if(!engine.ctx) return;
+    const t=engine.ctx.currentTime;
+    activeAir.forEach(p=>{
+      try{ p.killG.gain.cancelScheduledValues(t); p.killG.gain.setValueAtTime(p.killG.gain.value, t); p.killG.gain.linearRampToValueAtTime(0.0001, t+0.15); }catch(e){}
+      try{ p.src.stop(t+0.2); }catch(e){}
+    });
+  }
+  // A short rhythm of gap multipliers — repeats for a couple of cycles then
+  // mutates, so the idle venting "seems like a pattern, but switches up".
+  function makeAirPattern(){
+    const choices=[0.5,0.5,0.75,1,1,1.5,2];
+    const len=3+Math.floor(Math.random()*4); // 3..6 steps
+    const p=[]; for(let i=0;i<len;i++) p.push(choices[Math.floor(Math.random()*choices.length)]);
+    return p;
+  }
+  let airPattern=makeAirPattern(), airStep=0;
   document.getElementById('boot-btn').addEventListener('click', async function(){
     this.disabled=true; this.textContent='Priming…';
     const mode=await engine.start();
@@ -185,20 +269,43 @@
   }
 
   // ---------- loop ----------
-  let running=false;
-  const RESP_HZ=14/60; // 14 breaths / minute, audio-independent
-  function startAll(){ resize(); running=true; requestAnimationFrame(loop); }
+  let running=false, lastAir=0, nextAirGap=2.6;
+  const RESP_HZ=14/60; // 14 breaths / minute
+  function startAll(){ resize(); running=true; lastAir=0; requestAnimationFrame(loop); }
 
   const _v=new THREE.Vector3();
   function loop(t){
     if(!running) return; requestAnimationFrame(loop);
     const time=t*0.001;
     const freq=engine.getFrequencyData();
+    const level=engine.getLevel();
 
-    // signature: whole ring breathes, independent of audio
-    const breath=1 + Math.sin(time*Math.PI*2*RESP_HZ)*0.05;
+    // air-vent hiss at (slightly irregular) intervals — cadence is wall-clock so
+    // it runs the same off-focus; a louder input drives a stronger puff.
+    // ambient fan: steps through an evolving rhythm of varying intervals; goes
+    // silent (and cuts any in-flight puff) while a media file is playing.
+    if(mediaPlaying()){
+      if(!airMuted){ silenceAir(); airMuted=true; }
+    } else {
+      airMuted=false;
+      if(airEnabled && time - lastAir > nextAirGap){
+        lastAir = time;
+        nextAirGap = soundCfg.airGap * airPattern[airStep % airPattern.length];
+        airStep++;
+        if(airStep % airPattern.length === 0 && Math.random()<0.6){ airPattern = makeAirPattern(); }
+        emitAir(clamp(0.3 + Math.random()*0.25, 0.1, 1));
+      }
+    }
+    const airEase = Math.pow(clamp(1 - (time - lastAir)/Math.max(0.2, soundCfg.airDuration), 0, 1), 2);
+
+    // ring breathes, now visibly folding in the live level + each air puff
+    const breath=1 + Math.sin(time*Math.PI*2*RESP_HZ)*0.05 + level*0.06 + airEase*0.04;
     assembly.scale.set(breath,1,breath);
-    deckRings.forEach((r,d)=>{ r.rotation.z += (d%2?0.0018:-0.0014); });
+    key.intensity = 0.9 + level*1.4 + airEase*0.7;
+    deckRings.forEach((r,d)=>{
+      r.rotation.z += (d%2?0.0018:-0.0014);
+      r.material.opacity = clamp((0.5-d*0.06)*(1 + airEase*0.9) + level*0.25, 0, 1);
+    });
 
     // zones drift, occasionally out of safe range
     zones.forEach((z,i)=>{

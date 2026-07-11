@@ -83,15 +83,18 @@
   }
   #contact-list .c-row b{ color:var(--cyan); }
 
-  #waterfall{ min-width:0; }
-  #waterfall canvas{ display:block; width:100%; height:100%; }
-  #waterfall .vp-label{ position:absolute; top:14px; left:14px; font-size:10px; color:var(--paper-dim); letter-spacing:0.15em; z-index:2;}
+  #waterfall, #waterfall2{ min-width:0; }
+  #waterfall canvas, #waterfall2 canvas{ display:block; width:100%; height:100%; }
+  #waterfall .vp-label, #waterfall2 .vp-label{ position:absolute; top:14px; left:14px; font-size:10px; color:var(--paper-dim); letter-spacing:0.15em; z-index:2;}
 
   #bottombar{
     grid-column:1; grid-row:3;
-    display:grid; grid-template-columns: 230px minmax(0,1fr) 260px;
+    display:grid; grid-template-columns: 230px minmax(0,1fr) 230px 260px;
     gap:1px; background:var(--line); min-height:0;
   }
+  /* In the console the shell hides #controls; drop its column so the two
+     spectrographs + waveform fill the width instead of leaving a 260px gap. */
+  #bottombar.embedded{ grid-template-columns: 230px minmax(0,1fr) 230px; }
   #scope{ background:var(--panel); position:relative; }
   #scope canvas{ display:block; width:100%; height:100%; }
   #scope .vp-label{ position:absolute; top:10px; left:14px; font-size:10px; color:var(--paper-dim); letter-spacing:0.15em; z-index:2;}
@@ -142,7 +145,7 @@
     #controls{ padding:8px 12px; gap:5px; }
     #engage-btn{ padding:6px 8px; font-size:13px; }
     .toggle-row{ font-size:10px; }
-    #waterfall .vp-label, #scope .vp-label{ top:7px; left:10px; }
+    #waterfall .vp-label, #waterfall2 .vp-label, #scope .vp-label{ top:7px; left:10px; }
   }
 </style>
 </head>
@@ -178,6 +181,9 @@
     <div id="scope" class="panel">
       <div class="vp-label">WAVEFORM / LEVEL</div>
     </div>
+    <div id="waterfall2" class="panel">
+      <div class="vp-label">SPECTROGRAPH</div>
+    </div>
     <div id="controls" class="panel">
       <button id="engage-btn" class="label" disabled>Array Engaged</button>
       <div class="toggle-row">
@@ -198,6 +204,12 @@
 <script>
 (function(){
   'use strict';
+
+  // In the console (embedded), the shell hides #controls — collapse its grid
+  // column so the spectrographs + waveform fill the width (no dead gap).
+  if (new URLSearchParams(location.search).has('embed')){
+    document.getElementById('bottombar').classList.add('embedded');
+  }
 
   // ---------- Clock ----------
   function tickClock(){
@@ -323,32 +335,40 @@
   window.addEventListener('resize', resizeViewport);
 
   // ---------- Waterfall spectrograph (2D canvas) ----------
-  const wfEl = document.getElementById('waterfall');
-  const wfCanvas = document.createElement('canvas');
-  wfEl.appendChild(wfCanvas);
-  const wfCtx = wfCanvas.getContext('2d');
-  function resizeWaterfall(){
-    wfCanvas.width = wfEl.clientWidth;
-    wfCanvas.height = wfEl.clientHeight;
+  // Two identical spectrograph panels (one each side of the waveform) fed from
+  // the same FFT row, so they render in lockstep.
+  function makeWaterfall(el){
+    const canvas = document.createElement('canvas');
+    el.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    function resize(){ canvas.width = el.clientWidth; canvas.height = el.clientHeight; }
+    return { canvas, ctx, resize };
   }
+  const waterfalls = [
+    makeWaterfall(document.getElementById('waterfall')),
+    makeWaterfall(document.getElementById('waterfall2'))
+  ];
+  function resizeWaterfall(){ waterfalls.forEach(wf => wf.resize()); }
   window.addEventListener('resize', resizeWaterfall);
 
   function drawWaterfallRow(freqData){
-    const w = wfCanvas.width, h = wfCanvas.height;
-    if (w === 0 || h === 0) return;
-    // scroll existing image down by 1px
-    const img = wfCtx.getImageData(0, 0, w, h - 1);
-    wfCtx.putImageData(img, 0, 1);
-    // draw new row at top
     const n = freqData.length;
-    for (let x = 0; x < w; x++){
-      const idx = Math.floor((x / w) * n * 0.6); // emphasize lower/mid spectrum
-      const v = freqData[idx] / 255;
-      const hue = 38 - v * 20; // amber shifting slightly
-      const light = 8 + v * 42;
-      wfCtx.fillStyle = `hsl(${hue}, 70%, ${light}%)`;
-      wfCtx.fillRect(x, 0, 1, 1);
-    }
+    waterfalls.forEach(({ canvas, ctx }) => {
+      const w = canvas.width, h = canvas.height;
+      if (w === 0 || h === 0) return;
+      // scroll existing image down by 1px
+      const img = ctx.getImageData(0, 0, w, h - 1);
+      ctx.putImageData(img, 0, 1);
+      // draw new row at top
+      for (let x = 0; x < w; x++){
+        const idx = Math.floor((x / w) * n * 0.6); // emphasize lower/mid spectrum
+        const v = freqData[idx] / 255;
+        const hue = 38 - v * 20; // amber shifting slightly
+        const light = 8 + v * 42;
+        ctx.fillStyle = `hsl(${hue}, 70%, ${light}%)`;
+        ctx.fillRect(x, 0, 1, 1);
+      }
+    });
   }
 
   // ---------- Oscilloscope ----------

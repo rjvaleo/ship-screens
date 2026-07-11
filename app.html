@@ -135,6 +135,57 @@
   body.grid-view .empty-slot{ display:flex; }
   body.grid-view #bar .rail-size{ display:none; }
 
+  /* thumbnail click-catcher: sits over the (non-interactive) thumbnail iframe so
+     a click anywhere on the visualizer acts on that module — spotlight it in
+     Grid, promote it to center on a rail. Below the knob panel (z4) and pane-bar
+     (z3) so knob-drags, the close button, and the hover controls still win. */
+  .grid-hit{ position:absolute; inset:0; z-index:2; display:none; cursor:zoom-in; }
+  .pane.grid .grid-hit{ display:block; }
+  .pane.grid.spotlight .grid-hit{ display:none; }
+  .pane.rail .grid-hit{ display:block; cursor:pointer; }
+
+  /* spotlight: one grid module enlarged over a dimmed backdrop of the rest.
+     Only ever applied to a .pane.grid, so the inline knob panel still shows. */
+  /* backdrop + spotlight pane are siblings inside #console, so their z-order is
+     deterministic (pane always paints above the dim). No blur — keep it crisp. */
+  #spot-backdrop{ position:absolute; inset:0; z-index:40; display:none; background:rgba(4,6,10,0.74); }
+  #spot-backdrop.open{ display:block; }
+  #spot-ghost{ position:absolute; z-index:1; display:none; align-items:center; justify-content:center; gap:8px;
+    border:1px solid var(--edge-hi); background:rgba(4,6,10,0.6);
+    font:500 10px 'Space Grotesk',sans-serif; letter-spacing:0.14em; text-transform:uppercase; color:var(--dim); }
+  #spot-ghost .swatch{ width:8px; height:8px; flex:none; }
+  #spot-ghost small{ color:var(--accent); font-size:8px; letter-spacing:0.2em; }
+
+  .pane.grid.spotlight{
+    position:fixed !important; left:0 !important; right:0 !important; margin:0 auto;
+    top:64px !important; width:min(1120px,86vw) !important; height:calc(100vh - 92px) !important;
+    z-index:41; border-color:var(--edge-hi); box-shadow:0 24px 70px rgba(0,0,0,0.6);
+    animation:spotIn .2s ease;
+  }
+  @keyframes spotIn{ from{ opacity:0; } to{ opacity:1; } }
+  .pane.grid.spotlight .pane-bar{ pointer-events:none; height:28px; padding:0 12px;
+    background:linear-gradient(rgba(6,9,12,0.96),rgba(6,9,12,0.12)); }
+  .pane.grid.spotlight .pane-bar .nm{ font-size:12px; }
+  .pane.grid.spotlight .pane-bar .spot-close{ display:inline-flex; pointer-events:auto; }
+
+  /* the same knob panel + info bar, scaled up for the enlarged view */
+  .pane.grid.spotlight .inline-panel{ padding:22px 20px 14px; gap:9px;
+    background:linear-gradient(rgba(4,6,10,0),rgba(4,6,10,0.55) 34%,rgba(4,6,10,0.86)); }
+  .pane.grid.spotlight .inline-panel .knob-row{ gap:16px; }
+  .pane.grid.spotlight .knob{ width:66px; gap:6px; }
+  .pane.grid.spotlight .knob .dial{ width:52px; height:52px; }
+  .pane.grid.spotlight .knob .dial .ind{ width:3px; height:20px; }
+  .pane.grid.spotlight .knob .kval{ font-size:12px; }
+  .pane.grid.spotlight .inline-panel .knob-info{ min-height:36px; padding:9px 4px 0; gap:16px;
+    border-top-color:rgba(120,150,160,0.28); }
+  .pane.grid.spotlight .inline-panel .knob-info .ki-label{ font-size:17px; }
+  .pane.grid.spotlight .inline-panel .knob-info .ki-val{ font-size:17px; }
+  .pane.grid.spotlight .inline-panel .knob-info .ki-range{ font-size:13px; }
+
+  .pane-bar .spot-close{ display:none; cursor:pointer; color:var(--dim); border:1px solid var(--edge);
+    background:transparent; font-size:11px; line-height:1; padding:3px 8px; margin-left:auto; }
+  .pane-bar .spot-close:hover{ color:var(--accent); border-color:var(--accent); }
+
   #panel-pop{
     position:fixed; z-index:35; width:326px; max-height:calc(100vh - 70px); overflow:auto; display:none;
     background:rgba(8,12,16,0.96); border:1px solid var(--edge-hi);
@@ -312,9 +363,15 @@
       { key:'zoneVoiceGain', label:'Voice Gain', min:0, max:1.4, step:0.01, value:1, kind:'x' },
       { key:'chimePitch', label:'Chime Pitch', min:220, max:1400, step:5, value:660, kind:'hz' },
       { key:'chimeGap', label:'Chime Gap', min:0.4, max:5, step:0.05, value:2.4, kind:'sec' },
-      { key:'chimeGain', label:'Chime Gain', min:0, max:1.4, step:0.01, value:1, kind:'x' }
+      { key:'chimeGain', label:'Chime Gain', min:0, max:1.4, step:0.01, value:1, kind:'x' },
+      { key:'airGain', label:'Air Gain', min:0, max:1.4, step:0.01, value:0.7, kind:'x' },
+      { key:'airGap', label:'Air Gap', min:0.4, max:8, step:0.1, value:2.6, kind:'sec' },
+      { key:'airCutoff', label:'Air Tone', min:200, max:12000, step:50, value:2400, kind:'hz' },
+      { key:'airQ', label:'Air Res', min:0.2, max:12, step:0.1, value:0.7, kind:'ratio' },
+      { key:'airDuration', label:'Air Length', min:0.3, max:4, step:0.05, value:1.6, kind:'sec' }
     ],
     'cryo-bay': [
+      { key:'dataWaveform', label:'User Data', min:0, max:3, step:1, value:3, kind:'wave' },
       { key:'heartPitch', label:'Pulse Pitch', min:280, max:2600, step:10, value:1400, kind:'hz' },
       { key:'heartGain', label:'Pulse Gain', min:0, max:1.5, step:0.01, value:1, kind:'x' },
       { key:'heartDuration', label:'Pulse Length', min:0.03, max:0.35, step:0.01, value:0.09, kind:'sec' },
@@ -355,18 +412,27 @@
     const bar = document.createElement('div'); bar.className = 'pane-bar';
     bar.innerHTML = `<span class="swatch" style="background:${m.accent}"></span>`+
       `<span class="nm">${m.title}</span><span class="sp"></span>`+
+      `<button class="spot-close" title="Exit focus">✕</button>`+
       `<button class="promote" title="Promote to center">⤢</button>`+
       `<button class="panelctl" title="Panel controls">CTL</button>`+
       `<span class="mini-label">VOL</span><input class="vol" title="Module volume" type="range" min="0" max="1" step="0.01" value="${DEFAULT_VOL}">`+
       `<span class="mini-label">RX</span><input class="react" title="Audio reactivity amount" type="range" min="0" max="2" step="0.01" value="1">`;
     const iframe = document.createElement('iframe');
+    const gridHit = document.createElement('div');
+    gridHit.className = 'grid-hit';
     const inlinePanel = document.createElement('div');
     inlinePanel.className = 'inline-panel';
     iframe.src = m.file + '?embed=1';
     iframe.setAttribute('scrolling','no');
     iframe.addEventListener('load', () => { onPaneLoad(m.id); });
-    el.appendChild(bar); el.appendChild(iframe); el.appendChild(inlinePanel);
+    el.appendChild(bar); el.appendChild(iframe); el.appendChild(gridHit); el.appendChild(inlinePanel);
     consoleEl.appendChild(el);
+
+    gridHit.addEventListener('click', () => {
+      if(isGridPreset()) toggleSpotlight(m.id);
+      else if(panes[m.id].el.classList.contains('rail')) promote(m.id);
+    });
+    bar.querySelector('.spot-close').addEventListener('click', (ev) => { ev.stopPropagation(); closeSpotlight(); });
 
     const slider = bar.querySelector('input.vol');
     const reactSlider = bar.querySelector('input.react');
@@ -386,6 +452,47 @@
     consoleEl.appendChild(slot);
     emptySlots.push(slot);
   }
+
+  // ---- spotlight (grid mode only): enlarge one module over a dimmed backdrop,
+  // leaving a ghost in its grid cell so it "stays where it was" behind. ----
+  const spotBackdrop = document.createElement('div');
+  spotBackdrop.id = 'spot-backdrop';
+  consoleEl.appendChild(spotBackdrop);
+  const spotGhost = document.createElement('div');
+  spotGhost.id = 'spot-ghost';
+  consoleEl.appendChild(spotGhost);
+  let spotlightId = null;
+
+  function toggleSpotlight(id){
+    if(spotlightId === id) closeSpotlight();
+    else openSpotlight(id);
+  }
+  function openSpotlight(id){
+    if(!isGridPreset()) return;
+    if(spotlightId && spotlightId !== id) closeSpotlight();
+    spotlightId = id;
+    const p = panes[id];
+    const r = computeGridRects()[id];
+    if(r){
+      spotGhost.style.left = r.x + '%'; spotGhost.style.top = r.y + '%';
+      spotGhost.style.width = r.w + '%'; spotGhost.style.height = r.h + '%';
+      spotGhost.innerHTML =
+        `<span class="swatch" style="background:${p.module.accent}"></span>`+
+        `<span>${p.module.title}</span><small>In Focus</small>`;
+      spotGhost.style.display = 'flex';
+    }
+    spotBackdrop.classList.add('open');
+    p.el.classList.add('spotlight');
+  }
+  function closeSpotlight(){
+    if(!spotlightId) return;
+    panes[spotlightId].el.classList.remove('spotlight');
+    spotlightId = null;
+    spotBackdrop.classList.remove('open');
+    spotGhost.style.display = 'none';
+  }
+  spotBackdrop.addEventListener('click', closeSpotlight);
+  document.addEventListener('keydown', (ev) => { if(ev.key === 'Escape') closeSpotlight(); });
 
   function onPaneLoad(id){
     const p = panes[id];
@@ -477,6 +584,7 @@
     const grid = isGridPreset();
     document.body.classList.toggle('grid-view', grid);
     if(grid) closePanelPopover();
+    else closeSpotlight();
     MODULES.forEach(m => {
       const p = panes[m.id], r = rects[m.id];
       p.el.style.left = r.x + '%'; p.el.style.top = r.y + '%';
@@ -501,8 +609,11 @@
 
   function configure(id, fps, volume, minimal){
     const p = panes[id];
-    try { if(p.iframe.contentWindow && p.iframe.contentWindow.__shipConfig) p.iframe.contentWindow.__shipConfig({ fps, volume, minimal, muted, reactivity:p.reactivity, panel:p.panel }); } catch(e){}
-    try { if(p.iframe.contentWindow && p.iframe.contentWindow.__shipMediaConfig) p.iframe.contentWindow.__shipMediaConfig(paneMediaPayload(id)); } catch(e){}
+    try {
+      const w = p.iframe.contentWindow;
+      if(w && w.__shipConfig) w.__shipConfig({ fps, volume, minimal, muted, reactivity:p.reactivity, panel:p.panel });
+      if(w && w.__shipMediaConfig) w.__shipMediaConfig(paneMediaPayload(id));
+    } catch(e){}
   }
   function setVolume(id, v){
     const p = panes[id]; p.vol = v;
@@ -591,7 +702,7 @@
     ];
     (PANEL_CONTROLS[id] || []).forEach(ctrl => {
       specs.push({ key:ctrl.key, label:ctrl.label, min:ctrl.min, max:ctrl.max, step:ctrl.step,
-        kind:ctrl.kind, isInt:ctrl.kind === 'int', color:p.module.accent,
+        kind:ctrl.kind, isInt:ctrl.kind === 'int' || ctrl.kind === 'wave', color:p.module.accent,
         get:()=>p.panel[ctrl.key], set:v=>setPanelControl(id, ctrl.key, v), def:ctrl.value });
     });
     buildKnobPanel(p.inlinePanel, specs, { title:p.module.title, hint:'drag ↕ · dbl-click resets' });
@@ -696,7 +807,7 @@
       input.addEventListener('input', () => {
         const kind = input.dataset.kind;
         const raw = parseFloat(input.value);
-        const value = kind === 'int' ? Math.round(raw) : raw;
+        const value = (kind === 'int' || kind === 'wave') ? Math.round(raw) : raw;
         input.value = String(value);
         input.nextElementSibling.textContent = formatPanelValue(kind, value);
         setPanelControl(id, input.dataset.key, value);
@@ -724,6 +835,7 @@
     if(kind === 'percent') return Math.round(value*100);
     if(kind === 'x') return Number(value).toFixed(value < 10 ? 1 : 0) + 'x';
     if(kind === 'int') return String(Math.round(value));
+    if(kind === 'wave') return ['ECG','STAB','TEMP','AUDIO'][Math.round(value)] || 'ECG';
     if(kind === 'hz') return Math.round(value);
     if(kind === 'db') return Math.round(value) + 'dB';
     if(kind === 'ratio') return Number(value).toFixed(value < 10 ? 1 : 0) + ':1';
@@ -821,8 +933,9 @@
   });
 
   // ---- persistence (localStorage) ----
+  const PREFS_VERSION = 3;
   function savePrefs(){
-    try { localStorage.setItem('shipConsole', JSON.stringify({ preset, assignment, muted, rails:{ left:leftRailW, right:rightRailW }, vols: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].vol])), reacts: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].reactivity])), panels: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].panel])) })); } catch(e){}
+    try { localStorage.setItem('shipConsole', JSON.stringify({ version:PREFS_VERSION, preset, assignment, muted, rails:{ left:leftRailW, right:rightRailW }, vols: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].vol])), reacts: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].reactivity])), panels: Object.fromEntries(MODULES.map(m=>[m.id, panes[m.id].panel])) })); } catch(e){}
   }
   function loadPrefs(){
     try {
@@ -833,6 +946,13 @@
       if(s && s.vols){ MODULES.forEach(m => { if(s.vols[m.id] != null){ panes[m.id].vol = s.vols[m.id]; panes[m.id].slider.value = s.vols[m.id]; } }); }
       if(s && s.reacts){ MODULES.forEach(m => { if(s.reacts[m.id] != null){ panes[m.id].reactivity = s.reacts[m.id]; panes[m.id].reactSlider.value = s.reacts[m.id]; } }); }
       if(s && s.panels){ MODULES.forEach(m => { if(s.panels[m.id]) panes[m.id].panel = Object.assign(defaultPanelConfig(m.id), s.panels[m.id]); }); }
+      if(s && (Number(s.version)||0) < PREFS_VERSION){
+        Object.assign(panes['life-support'].panel, {
+          airGain:0.7, airGap:2.6, airCutoff:2400, airQ:0.7, airDuration:1.6
+        });
+        panes['cryo-bay'].panel.dataWaveform = defaultPanelConfig('cryo-bay').dataWaveform;
+        savePrefs();
+      }
     } catch(e){}
   }
 
@@ -844,7 +964,10 @@
     // activation, so each AudioContext is allowed to start.
     MODULES.forEach(m => {
       const p = panes[m.id];
-      try { if(p.iframe.contentWindow && p.iframe.contentWindow.__shipBoot) p.iframe.contentWindow.__shipBoot(); } catch(e){}
+      try {
+        const w = p.iframe.contentWindow;
+        if(w && w.__shipBoot) w.__shipBoot();
+      } catch(e){}
     });
     if(mediaFile) broadcastMediaFile(mediaFile);
     // apply per-pane fps/volume now that engines exist
