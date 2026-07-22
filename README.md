@@ -21,6 +21,10 @@
 > constraints, and the shared audio API reference) and **ROADMAP.md** (the
 > design record for each screen). This file covers setup and what's already
 > built.
+>
+> This browser build is the **Phase-1 prototype**. Planning for a native
+> desktop/plugin rebuild lives in **[docs/BUILD_PLAN_JUCE.md](docs/BUILD_PLAN_JUCE.md)**
+> and **[docs/VISUAL_PLATFORMS.md](docs/VISUAL_PLATFORMS.md)**.
 
 A set of 10 sci-fi ship data screens — each a self-contained HTML file with
 3D animation (Three.js), a live spectrograph/waterfall, an oscilloscope, and
@@ -46,6 +50,16 @@ Two ways to run them:
   switch the wall into true browser fullscreen (hides browser chrome).
 - **`launcher.html` — the multi-window deck**: assign any screen to any of 10
   slots and pop each out as its own OS-level window to tile across a desktop.
+
+## Bridge Console layouts
+
+| Solo | Duo |
+|---|---|
+| ![Solo layout](docs/screenshots/console-solo.png) | ![Duo layout](docs/screenshots/console-duo.png) |
+
+| Trio | Grid |
+|---|---|
+| ![Trio layout](docs/screenshots/console-trio.png) | ![Grid layout](docs/screenshots/console-grid.png) |
 
 ## Current highlights
 
@@ -364,12 +378,21 @@ ship-screens/
   CLAUDE.md / AGENTS.md     agent/contributor guides — conventions, current
                             implementation notes, and hard constraints
   ROADMAP.md               per-screen design brief for all 10 screens
+  docs/
+    BUILD_PLAN_JUCE.md      native rebuild — JUCE audio engine + Main Window
+                            build plan (standalone + VST3/AU)
+    VISUAL_PLATFORMS.md     survey of algorithmic/node-based visual engines
+                            for the richer native visualizer layer
+  server/
+    presets.js              Vite plugin reproducing server.py's /api/presets
+                            and /api/health endpoints under `npm run dev`
   shared/
     audio-engine.js        shared Web Audio backbone: mic / media-file / synth
                             sources, FFT analysis, HRTF spatial voices, standard
                             pings, media effects chain, self-injected File Deck UI
     embed.js               console hook — boot / fps / volume / reactivity /
                             panel / minimal-mode control when ?embed=1
+    analytics.js           optional GA4 hook — no-ops until VITE_GA_ID is set
   screens/
     screen-01-comms-array.html
     ... through screen-10-hull-cameras.html
@@ -395,10 +418,11 @@ holographic sci-fi look.
   "contact" nodes on a bearing/range plot, connected to the core by trace
   lines. Node position, pulse, and glow are driven by the live FFT data
   sliced per-contact.
-- **Spectrograph:** scrolling amber waterfall on the right, driven by
-  `AnalyserNode.getByteFrequencyData`.
-- **Oscilloscope:** cyan waveform + amber level meter along the bottom,
-  driven by `getByteTimeDomainData`.
+- **Spectrograph:** twin scrolling amber waterfalls flanking the waveform
+  panel (left and right), both driven by the same
+  `AnalyserNode.getByteFrequencyData` row so they scroll in lockstep.
+- **Oscilloscope:** cyan waveform + amber level meter in the center of the
+  bottom row, driven by `getByteTimeDomainData`.
 - **Spatial sonification (toggle):** each contact gets a persistent HRTF
   `PannerNode` voice positioned to match its 3D location — put on
   headphones and you can hear contacts move around you.
