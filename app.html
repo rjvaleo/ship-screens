@@ -230,16 +230,7 @@
     <span class="media-time" id="media-time">0:00 / 0:00</span>
     <button id="media-audible" class="active">File Audio</button>
     <button id="media-loop" class="active">Loop</button>
-    <select id="media-effect" title="File pass-through effect">
-      <option value="none">Clean</option>
-      <option value="filter">Filter</option>
-      <option value="delay">Delay</option>
-      <option value="reverb">Reverb</option>
-      <option value="chorus">Chorus</option>
-      <option value="flange">Flange</option>
-      <option value="pitch">Pitch</option>
-    </select>
-    <input id="media-amount" type="range" min="0" max="1" step="0.01" value="0.5" title="Effect amount">
+    <button id="media-feed-gen" title="Let each module's own synthesized sonification react to the file, the same way it reacts to the mic">Feed Generative</button>
     <span class="media-name" id="media-name">no file</span>
   </div>
   <button id="master-mute" title="Mute all audio (visuals keep running)">MUTE</button>
@@ -304,7 +295,7 @@
   let booted = false;
   let loadedCount = 0;
   let mediaFile = null;
-  const mediaState = { audible:true, loop:true, effect:'none', amount:0.5, seeking:false };
+  const mediaState = { audible:true, loop:true, feedGenerative:false, seeking:false };
   const PANEL_CONTROLS = {
     'comms-array': [
       { key:'beaconPitch', label:'Beacon Pitch', min:0.35, max:2.5, step:0.01, value:1, kind:'x' },
@@ -991,6 +982,7 @@
     document.getElementById('media-audible').classList.toggle('active', mediaState.audible);
     document.getElementById('media-audible').textContent = mediaState.audible ? 'File Audio' : 'Muted';
     document.getElementById('media-loop').classList.toggle('active', mediaState.loop);
+    document.getElementById('media-feed-gen').classList.toggle('active', mediaState.feedGenerative);
     MODULES.forEach(m => {
       const p = panes[m.id];
       try {
@@ -1000,33 +992,16 @@
     });
   }
 
-  function mediaPayload(audibleOverride){
-    const amount = mediaState.amount;
-    const payload = { audible:audibleOverride == null ? mediaState.audible : audibleOverride, loop:mediaState.loop, effect:mediaState.effect };
-    if(mediaState.effect === 'filter'){
-      payload.cutoff = 180 + amount * 15820;
-      payload.resonance = 0.6 + amount * 8;
-    } else if(mediaState.effect === 'delay'){
-      payload.delayTime = 0.06 + amount * 0.74;
-      payload.feedback = 0.12 + amount * 0.58;
-    } else if(mediaState.effect === 'chorus'){
-      payload.modRate = 0.16 + amount * 1.4;
-      payload.modDepth = 0.002 + amount * 0.012;
-    } else if(mediaState.effect === 'flange'){
-      payload.modRate = 0.28 + amount * 3.2;
-      payload.modDepth = 0.0008 + amount * 0.004;
-    } else if(mediaState.effect === 'pitch'){
-      payload.pitch = Math.round(amount * 24 - 12);
-    }
-    return payload;
-  }
-
-  function primaryMediaAudioPaneId(){
-    return assignment[0];
-  }
-
+  // Every pane gets the same media config, regardless of layout role or which
+  // pane is selected/promoted — all 10 modules' audio (dry file pass-through
+  // and/or their own generative reaction) is always heard together, and
+  // switching the featured pane never mutes or ducks anything.
   function paneMediaPayload(id){
-    return mediaPayload(mediaState.audible && id === primaryMediaAudioPaneId());
+    return {
+      audible: mediaState.audible,
+      loop: mediaState.loop,
+      feedGenerative: mediaState.feedGenerative
+    };
   }
 
   function broadcastMediaTransport(cmd){
@@ -1108,12 +1083,8 @@
     mediaState.loop = !mediaState.loop;
     broadcastMediaConfig();
   });
-  document.getElementById('media-effect').addEventListener('change', function(){
-    mediaState.effect = this.value;
-    broadcastMediaConfig();
-  });
-  document.getElementById('media-amount').addEventListener('input', function(){
-    mediaState.amount = parseFloat(this.value);
+  document.getElementById('media-feed-gen').addEventListener('click', function(){
+    mediaState.feedGenerative = !mediaState.feedGenerative;
     broadcastMediaConfig();
   });
 

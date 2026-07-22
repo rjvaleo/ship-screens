@@ -14,7 +14,10 @@
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-4A7B9D)
 ![Browsers](https://img.shields.io/badge/browsers-Chrome%20%7C%20Edge%20%7C%20Safari-2D9C6A)
 ![Screens](https://img.shields.io/badge/screens-10%20%2F%2010%20online-brightgreen)
-![Status](https://img.shields.io/badge/status-complete-brightgreen)
+![Status](https://img.shields.io/badge/status-see%20STATUS.md-important)
+
+> **Development is not complete.** See **[STATUS.md](STATUS.md)** for what's
+> finished, what's in progress, and what to do next before assuming anything.
 
 > Handing this to Claude Code (or another agent)? Start with **CLAUDE.md** /
 > **AGENTS.md** (companion contributor briefs with conventions, hard
@@ -24,7 +27,11 @@
 >
 > This browser build is the **Phase-1 prototype**. Planning for a native
 > desktop/plugin rebuild lives in **[docs/BUILD_PLAN_JUCE.md](docs/BUILD_PLAN_JUCE.md)**
-> and **[docs/VISUAL_PLATFORMS.md](docs/VISUAL_PLATFORMS.md)**.
+> and **[docs/VISUAL_PLATFORMS.md](docs/VISUAL_PLATFORMS.md)**. A separate,
+> in-progress effort to unify the Bridge Console's engine and drop its
+> `<iframe>`-per-screen hosting is paused mid-flight — see
+> **[docs/NO_IFRAME_MIGRATION.md](docs/NO_IFRAME_MIGRATION.md)** before
+> touching `shared/audio-engine.js` or `shared/mount.js`.
 
 A set of 10 sci-fi ship data screens — each a self-contained HTML file with
 3D animation (Three.js), a live spectrograph/waterfall, an oscilloscope, and
@@ -70,8 +77,9 @@ Two ways to run them:
   or Grid knobs. Recent additions include Life Support air-vent hiss controls
   and Cryo Bay selectable pod user-data waveforms.
 - **Shared media drive:** load one audio/video file in the console and all ten
-  screens analyse/react to it together while audible playback comes from only
-  the primary pane.
+  screens analyse/react to it together — and all ten can be simultaneously
+  audible (dry pass-through and/or each module's own generative reaction via
+  "Feed Generative"). Selecting or promoting a pane never changes any volume.
 - **Fallback synth:** when mic access is denied or absent, each screen falls
   back to the built-in procedural signal bed so the visualizers and sonification
   stay alive.
@@ -289,12 +297,18 @@ open separate windows.
   count and ping gain). Changes apply instantly with no reboot. See
   [Per-screen sound tuning](#per-screen-sound-tuning) below.
 - **Media / File Deck** (top bar) — load an audio or video file and every pane
-  reacts to *it* instead of the mic/synth. Play/restart, seek, loop, mute the
-  file's own audio ("File Audio"), and apply a pass-through effect (Clean,
-  Filter, Delay, Reverb, Chorus, Flange, Pitch) with an amount slider.
-  To avoid layered playback from 10 simultaneous engines, the file's own
-  audible output is routed through the current primary pane only; all panes
-  still analyse and react to the same file.
+  reacts to *it* instead of the mic/synth. Play/restart, seek, loop, and mute
+  the file's own **dry** audio ("File Audio") — file playback has no effects
+  rack of its own. A screen's own synthesized sonification (its spatial
+  voices/pings) normally goes silent while a file plays, so it doesn't clash
+  with the file's dry pass-through; the **Feed Generative** toggle lifts that
+  silence, so each module keeps reacting to the file's analysis and making its
+  own sound exactly as it does with the mic — no raw file audio is routed
+  anywhere by this toggle. Both the dry pass-through and every module's
+  generative reaction play from **all 10 panes at once** — selecting or
+  promoting a pane never mutes or ducks anything. Note each pane decodes the
+  file independently, so ten dry copies playing together will drift slightly
+  out of phase with each other rather than summing as a locked unison.
 - **MUTE** (top bar) — a master mute that silences every pane at once (the
   button turns red "MUTED"). It cuts sound at each engine's final output stage,
   so the **visualizers keep running** — the wall stays alive, just silent.
@@ -325,10 +339,13 @@ sonification all react to it.
   file drives every pane.
 - **On a standalone screen:** each screen auto-injects a small **File Deck**
   panel (bottom-left) after boot. Pick a file, then use its transport (play /
-  restart / seek / loop), toggle whether the file's own audio is audible, set an
-  **audio-reactivity** amount, choose a pass-through **effect** (Clean, Filter,
-  Delay, Reverb, Chorus, Flange, Pitch) with a cutoff/amount control, and use
-  **Mute Output** to silence that screen entirely (visuals keep running).
+  restart / seek / loop), toggle whether the file's own **dry** audio is
+  audible, set an **audio-reactivity** amount, toggle **Feed Generative** to
+  let the screen's own synthesized sonification keep reacting to the file —
+  the same way it reacts to the mic — instead of going silent while a file
+  plays, and use **Mute Output** to silence that screen entirely (visuals
+  keep running). File playback itself has no
+  separate effects rack.
 
 The engine analyses the file exactly like a mic feed, so the visuals stay
 FFT-driven — you're just choosing what sound they listen to.

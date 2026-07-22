@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Mount Harness</title>
+<style>html,body{margin:0;height:100%;background:#000;}#panes{position:fixed;inset:0;display:flex;}#a,#b{position:relative;flex:1;}</style>
+</head>
+<body>
+<div id="panes"><div id="a"></div><div id="b"></div></div>
+<script src="/shared/mount.js"></script>
+<script>
+  // Mounts two instances of the SAME screen side by side, no iframes, to
+  // prove: (1) each gets its own scoped DOM via Shadow DOM, (2) they share
+  // one ShipAudioEngine EngineCore (one AudioContext) once booted, (3)
+  // per-instance fps/panelConfig stay independent.
+  window.__mounts = {};
+  (async function(){
+    window.__mounts.a = await ShipMount.mount('/screens/screen-01-comms-array.html', document.getElementById('a'));
+    window.__mounts.b = await ShipMount.mount('/screens/screen-01-comms-array.html', document.getElementById('b'));
+    window.__mountsReady = true;
+  })();
+</script>
+</body>
+</html>

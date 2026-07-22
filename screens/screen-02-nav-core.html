@@ -158,8 +158,17 @@
   };
 
   function clamp(v, min, max){ return Math.max(min, Math.min(max, Number(v))); }
-  function isMediaPlaying(){
-    try { return !!(engine.getMediaState && engine.getMediaState().playing); } catch(e){ return false; }
+  // Suppress this module's own beacon/chime voices while a file plays, UNLESS
+  // the console's "Feed Generative" toggle is on — then the file drives this
+  // module's sonification exactly like the mic would (see audio-engine.js's
+  // _generativeSuppressed, which the shared createSpatialVoice/pingStandard
+  // use; Nav Core builds its own voice class directly on the shared buses, so
+  // it needs the same gate here).
+  function generativeSuppressed(){
+    try {
+      const state = engine.getMediaState && engine.getMediaState();
+      return !!(state && state.playing && !state.feedGenerative);
+    } catch(e){ return false; }
   }
   function waypointFreq(w){
     return navSound.oscPitch + w.toneOffset;
@@ -316,12 +325,12 @@
   }
 
   function createNavPulseVoice(freq){
-    if(!engine.ctx || !engine._spatialBus || isMediaPlaying()) return null;
+    if(!engine.ctx || !engine._spatialBus || generativeSuppressed()) return null;
     return new NavPulseVoice(engine.ctx, engine._spatialBus, freq, navSound);
   }
 
   function pingNavPulse(freq){
-    if(!engine.ctx || !engine._standardBus || isMediaPlaying()) return;
+    if(!engine.ctx || !engine._standardBus || generativeSuppressed()) return;
     const ctx = engine.ctx;
     const voice = new NavPulseVoice(ctx, engine._standardBus, freq, navSound);
     voice.panner.disconnect();
@@ -473,7 +482,7 @@
       w.mesh.scale.setScalar(isNext ? 1.15+Math.sin(time*4)*0.08 : 1);
 
       // spatial beacon: bearing audible, transformed into camera/listener frame
-      if (spatialEnabled && !isMediaPlaying()){
+      if (spatialEnabled && !generativeSuppressed()){
         if(!w.voice) w.voice = createNavPulseVoice(waypointFreq(w));
         if(w.voice){
           _tmp.copy(w.pos); camera.worldToLocal(_tmp);

@@ -21,8 +21,14 @@ current usage notes live in **README.md**.
   Solo / Duo / Trio / Grid layouts, rail promotion, Grid spotlight focus,
   per-pane volume/reactivity, CTL panels, fullscreen, master mute, and a top-bar
   media deck.
-- A loaded audio/video file is broadcast to every pane for analysis. Only the
-  primary pane emits the file's audible pass-through to avoid ten stacked copies.
+- A loaded audio/video file is broadcast to every pane. All 10 panes analyse
+  it, and — by design — all 10 can be simultaneously audible (dry pass-through
+  and/or each module's own generative reaction via "Feed Generative"):
+  switching the featured/promoted pane never mutes or changes anything.
+  Each pane runs its own independent `<video>` element decoding the same
+  file, so dry pass-through from many panes at once will drift slightly out
+  of phase with itself rather than summing as a perfectly locked unison —
+  expected given the architecture, not a bug.
 - The procedural synth fallback is still owned by each screen's
   `ShipAudioEngine`. Do not replace it with a shared generated-source handoff
   without proving audible output and visual reactivity across all panes; an
@@ -105,10 +111,10 @@ a 4×3 wall of full-bleed visualizer thumbnails via the hook's `minimal` mode,
 each with an overlaid knob panel + hover-info box). It also has a top-bar media
 deck (load an audio/video file to drive every pane), a master **MUTE** button,
 and per-pane VOL / RX (reactivity) / CTL controls, plus a **FULLSCREEN** button
-for true browser fullscreen mode. The media file's own audible output is routed
-through the primary pane only (to avoid stacked playback), while all panes still
-analyse and react to the same file. A new screen works there for free **as long
-as it follows these conventions**:
+for true browser fullscreen mode. The media file's own audible output (and each
+module's generative reaction to it, via "Feed Generative") plays from every
+pane at once — layout/selection changes never mute or duck any pane's audio.
+A new screen works there for free **as long as it follows these conventions**:
 
 - Load the hook right after the audio engine:
   `<script src="../shared/embed.js"></script>` (after
@@ -195,10 +201,16 @@ they're part of the engine's public contract:
 // Media file as the audio source (analysed just like the mic).
 await engine.loadMediaFile(file);                      // File/Blob from an <input> or drop
 engine.mediaTransport({ action: 'play' });             // 'play'|'pause'|'toggle'|'restart'|'seek'|'seekRatio'
-engine.configureMedia({ audible: true, loop: true,     // file's own audio + looping
-                        effect: 'reverb', cutoff: 4000, pitch: 0 }); // pass-through FX
+engine.configureMedia({ audible: true, loop: true,     // file's own dry audio + looping
+                        feedGenerative: false });      // let modules react to the file like the mic?
 engine.getMediaState();                                // { loaded, fileName, playing, currentTime, duration, ... }
-//   effect ∈ none|filter|delay|reverb|chorus|flange|pitch
+// File playback has no effects rack of its own — it's always dry. `audible`
+// toggles the file's own clean pass-through. `feedGenerative` does NOT route
+// any raw audio anywhere — by default, a screen's own createSpatialVoice()/
+// pingStandard() go silent while a file plays (so the file's dry pass-through
+// doesn't clash with them); `feedGenerative: true` lifts that suppression, so
+// the module's synthesized voices/pings keep reacting to the file's analysis
+// exactly as they react to the mic.
 
 // Analysis reactivity (scales getFrequencyData/getTimeDomainData/getLevel output).
 engine.setAudioReactivity(1.4);  engine.getAudioReactivity();
@@ -207,9 +219,12 @@ engine.setAudioReactivity(1.4);  engine.getAudioReactivity();
 // analyser keeps running, so visuals stay live while muted. Safe before start().
 engine.setMuted(true);  engine.toggleMute();  engine.isMuted();
 
-// Sonic profile — shapes the generated-sound effects chain the sonification
-// voices run through (tone/movement/texture/pulse/drift/space 0..1, plus
-// pitch, cutoff, modRate, delay/flange/phaser/grain mixes).
+// Sonic profile — shapes the shared generative effects chain the
+// sonification voices/pings always run through (tone/movement/texture/pulse
+// /drift/space 0..1, plus pitch, cutoff, modRate, delay/flange/phaser/grain
+// mixes). Unaffected by `feedGenerative` — that flag only controls whether
+// those voices are allowed to fire while media is playing, not how they're
+// processed once they do.
 engine.setSonicProfile({ tone: 0.6, space: 0.4, cutoff: 9000 });
 engine.getSonicProfile();
 ```
