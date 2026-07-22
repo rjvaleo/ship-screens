@@ -28,12 +28,16 @@ const screenInputs = Object.fromEntries(
     .map((f) => [`screens/${f.replace(/\.html$/, '')}`, resolve(root, 'screens', f)]),
 );
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   root,
   // Serves on the same port as the old Python server, and reproduces its
   // /api/presets endpoints via the plugin so saved layouts still work.
   server: { port: 8000, host: true },
   preview: { port: 8000 },
+  // Relative base so the built dist/ works from any path — including a
+  // GitHub Pages project site (served from /<repo-name>/, not /). Dev server
+  // stays rooted at '/' so localhost:8000 URLs are unaffected.
+  base: command === 'build' ? './' : '/',
   plugins: [presetsApiPlugin({ root }), copySharedAssets()],
   build: {
     target: 'es2020',
@@ -52,4 +56,4 @@ export default defineConfig({
     environment: 'happy-dom',
     include: ['tests/unit/**/*.test.js'],
   },
-});
+}));

@@ -169,6 +169,29 @@ The wrapper also serves on port 8000 and supports the launcher preset API. It
 does not bundle npm/ES-module screen code, so use Vite for new module-based
 work and production builds.
 
+## Deploying to GitHub Pages
+
+The build is fully static (`npm run build` → `dist/`) and works as-is on
+[GitHub Pages](https://pages.github.com/), including from a project subpath
+(`https://<user>.github.io/<repo>/`) — `vite.config.js` sets `base: './'` for
+production builds so every asset resolves relatively.
+
+**One-time setup:** in the repo's **Settings → Pages**, set **Source** to
+**GitHub Actions**.
+
+**[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)**
+builds and publishes `dist/` automatically on every push to `main` (or via
+**Actions → Deploy to GitHub Pages → Run workflow**).
+
+What changes on Pages vs. local dev:
+
+- **Live mic input works** — HTTPS on `*.github.io` is a secure context, same
+  as `localhost`, unlike plain `file://`.
+- **Saved Layouts stays hidden** — Pages is static hosting with no `/api/*`
+  backend (`server.py` / the Vite presets plugin don't run there). The launcher
+  already degrades gracefully for this (see `launcher.html`'s `initLayouts()`)
+  — everything else works unchanged.
+
 ## Platform
 
 - **Desktop OS**: macOS, Windows, and Linux (modern desktop browsers).
